@@ -1,0 +1,9 @@
+@font-face {
+  font-family: 'Aadhunik';
+  src: url('Aadhunik.eot?#iefix') format('embedded-opentype'), 
+  url('Aadhunik.woff') format('woff'), 
+  url('Aadhunik.ttf')  format('truetype'),
+  url('Aadhunik.svg#Aadhunik') format('svg');
+  font-weight: normal;
+  font-style: normal;
+}
