@@ -4,12 +4,23 @@
 .middle {
 	text-align: center;
 }
+.content {
+	margin: auto;
+	width: 500px;
+	height: auto;
+	
+}
+.panel {
+	/*text-align: center;*/
+}
 
 .table {
+	margin: auto;
 	text-align:center;
 	background-color: rgb(250, 250, 250);
-	width: 350px;
+	width: 100%;
 	height: 150px;
+	/*-webkit-user-modify: read-write;*/
 }
 .table tr:nth-child(even) {
 	background-color: rgb(255, 240, 230)
@@ -20,7 +31,6 @@
 .table tr:hover {
 	background-color: rgb(255, 240, 255);
 }
-
 
 table, tx, td {
 	border: 1px solid black;
