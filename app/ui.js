@@ -4,9 +4,15 @@ if(typeof window !== "object" || window === null || typeof document !== "object"
 
 const ui = {
 
+    /**
+     * Attaches spreadsheet to user interface
+     * @param {Spreadsheet} spreadsheet
+     */
     attach(spreadsheet) {
 
+        spreadsheet.addEventListener(Spreadsheet.Event.CELL_VALUE_UPDATED, (i, j, value) => {
 
+        });
 
     }
 
