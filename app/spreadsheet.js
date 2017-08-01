@@ -7,7 +7,7 @@
  *   manager.addEventListener(tag, listener);
  *   manager.triggerEvent(tag, 1, 2, 3);
  *   manager.removeEventListener(listener);
-//  */
+ */
 const EventManager = class {
 
     /**
@@ -87,10 +87,10 @@ const Spreadsheet = class extends EventManager {
      */
     constructor() {
 
+        super();
         /**
          * @type {!Array<Spreadsheet._Cell>} Array of spreadsheet cells
          */
-        super();
         this.cells = [];
     }
 
@@ -114,7 +114,7 @@ const Spreadsheet = class extends EventManager {
         }
         if (j < rows) {
             for (let indexI = 0; indexI < i; indexI++) {
-                for (let indexJ = 0; indexJ < this.cells[indexI].length; indexJ++) {
+                for (let indexJ = 0; indexJ <= rows - this.cells[indexI].length; indexJ++) {
                     this.cells[indexI].pop();
                 }
             }
