@@ -7,7 +7,7 @@
  *   manager.addEventListener(tag, listener);
  *   manager.triggerEvent(tag, 1, 2, 3);
  *   manager.removeEventListener(listener);
- */
+//  */
 const EventManager = class {
 
     /**
@@ -87,24 +87,52 @@ const Spreadsheet = class extends EventManager {
      */
     constructor() {
 
+        /**
+         * @type {!Array<Spreadsheet._Cell>} Array of spreadsheet cells
+         */
         super();
-
-
-
+        this.cells = [];
     }
 
     /**
-     * Gets string representation of a formula in a cell
-     * @param {int} i Row index
-     * @param {int} j Column index
-     * @returns {string} Formula
+     * Updates size of table
+     * @param {int} i New row index
+     * @param {int} j New column index
      */
-    getFormula(i, j) {
+    _updateSize(i, j) {
+        let columns = this.cells.length;
+        let rows = this.cells.length > 0 ? this.cells[0].length : 0;
+        if (i < 0 || j < 0) return;
+        if (i > columns) {
+            for (let index = columns - 1; index < i; index++) {
+                this.cells[index] = [new _Cell()];
+            }
+        } else if (i < columns) {
+            for (let index = i; index < columns; index++) {
+                this.cells.pop();
+            }
+        }
+        if (j < rows) {
+            for (let indexI = 0; indexI < i; indexI++) {
+                for (let indexJ = 0; indexJ < this.cells[indexI].length; indexJ++) {
+                    this.cells[indexI].pop();
+                }
+            }
+        }
+        for (let indexI = 0; indexI < i; indexI++) {
+            for (let indexJ = this.cells[indexI].length ; indexJ < j; indexJ++) {
+                this.cells[indexI][indexJ] = new _Cell();
+            }
+        }
+    }
 
-
-
-        return "";
-
+    /** Clears table */
+    clearTable() {
+        for (let indexI = 0; indexI < this.i; indexI++) {
+            for (let indexJ = 0 ; indexJ < this.j; indexJ++) {
+                this.cells[indexI][indexJ] = new _Cell();
+            }
+        }
     }
 
     /**
@@ -151,6 +179,24 @@ Spreadsheet.FormulaSyntaxError = class extends Error {
         super(`${reason} at character ${position}`);
         this.name = "Formula Syntax Error";
         this.position = position;
+    }
+
+};
+
+Spreadsheet._Cell = class {
+
+    /**
+     * @constructor
+     */
+    constructor() {
+        /**
+         * @type {undefined} Cell value
+         */
+        this.value = undefined;
+        /**
+         * @type {Spreadsheet._Expression} Parsed formula
+         */
+        this.expression = undefined;
     }
 
 };
