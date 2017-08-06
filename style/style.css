@@ -4,6 +4,119 @@
   margin: 0;
   padding: 0; }
 
+body, html {
+  overflow: hidden; }
+
 body {
   font-family: "Open Sans", sans-serif;
-  font-size: 16px; }
+  font-size: 16px;
+  background: #EEE;
+  cursor: default;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none; }
+
+ul, ol {
+  display: block;
+  list-style: none; }
+
+.clear-fix::after {
+  content: "";
+  display: block;
+  clear: both; }
+
+#header {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 56px;
+  background: #0F9D58;
+  box-shadow: 1px 2px 1px rgba(0, 0, 0, 0.15); }
+
+#title {
+  float: left;
+  height: 56px;
+  line-height: 56px;
+  padding: 0 24px;
+  font-size: 24px;
+  font-weight: 300;
+  color: #FFF; }
+  #title #version {
+    margin: 0 5px;
+    font-size: 0.75em;
+    color: rgba(255, 255, 255, 0.7); }
+
+#nav {
+  position: relative;
+  float: left;
+  height: 56px; }
+
+.nav-item {
+  display: block;
+  float: left;
+  width: 120px;
+  height: 56px;
+  line-height: 56px;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 400;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.9);
+  transition: background 0.1s ease;
+  cursor: pointer; }
+
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.05); }
+
+.nav-item:active {
+  transition: background 0s;
+  background: rgba(255, 255, 255, 0.09); }
+
+#nav-underline {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  width: 120px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.9);
+  transition: left 0.18s ease; }
+
+.nav-item:nth-child(1).selected ~ #nav-underline {
+  left: 0px; }
+
+.nav-item:nth-child(2).selected ~ #nav-underline {
+  left: 120px; }
+
+.nav-item:nth-child(3).selected ~ #nav-underline {
+  left: 240px; }
+
+.nav-item:nth-child(4).selected ~ #nav-underline {
+  left: 360px; }
+
+#toolbar {
+  position: absolute;
+  top: 71px;
+  right: 15px;
+  left: 15px;
+  height: 40px;
+  background: #FFF;
+  border-radius: 3px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.15); }
+
+#toolbar > li {
+  display: none; }
+
+#toolbar > li.active {
+  display: block; }
+
+#main {
+  position: absolute;
+  top: 126px;
+  right: 15px;
+  bottom: 15px;
+  left: 15px;
+  background: #FFF;
+  border-radius: 3px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.18); }

@@ -4,6 +4,25 @@ if(typeof window !== "object" || window === null || typeof document !== "object"
 
 const ui = {
 
+    DEFAULT_ROWS: 100,
+    DEFAULT_COLUMNS: 26,
+
+    /**
+     * Initializes user interface
+     */
+    init() {
+
+        document.querySelectorAll(".nav-item")
+            .forEach((element, index) => element.addEventListener("click", () => {
+                element.parentNode.querySelector(".selected").classList.remove("selected");
+                element.classList.add("selected");
+                const toolbars = document.querySelectorAll("#toolbar > li");
+                toolbars.forEach(element => element.classList.remove("active"));
+                toolbars[index].classList.add("active");
+            }));
+
+    },
+
     /**
      * Attaches spreadsheet to user interface
      * @param {Spreadsheet} spreadsheet

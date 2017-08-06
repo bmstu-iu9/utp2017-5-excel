@@ -1,4 +1,12 @@
 $font-main: 'Open Sans', sans-serif;
+$color-theme: #0F9D58;
+
+@mixin user-select($value: 'none') {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
 
 * {
     border: none;
@@ -6,7 +14,115 @@ $font-main: 'Open Sans', sans-serif;
     margin: 0;
     padding: 0;
 }
+body, html {
+    overflow: hidden;
+}
 body {
     font-family: $font-main;
     font-size: 16px;
+    background: #EEE;
+    cursor: default;
+    @include user-select;
+}
+ul, ol {
+    display: block;
+    list-style: none;
+}
+.clear-fix::after {
+    content: "";
+    display: block;
+    clear: both;
+}
+
+$header-height: 56px;
+#header {
+    position: absolute;
+    top: 0; right: 0; left: 0;
+    height: $header-height;
+    background: $color-theme;
+    box-shadow: 1px 2px 1px rgba(0, 0, 0, 0.15);
+}
+#title {
+    float: left;
+    height: $header-height;
+    line-height: $header-height;
+    padding: 0 24px;
+    font-size: 24px;
+    font-weight: 300;
+    color: #FFF;
+    #version {
+        margin: 0 5px;
+        font-size: 0.75em;
+        color: rgba(255, 255, 255, 0.7);
+    }
+}
+#nav {
+    position: relative;
+    float: left;
+    height: $header-height;
+}
+$nav-item-width: 120px;
+.nav-item {
+    display: block;
+    float: left;
+    width: $nav-item-width;
+    height: $header-height;
+    line-height: $header-height;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 400;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.9);
+    transition: background 0.1s ease;
+    cursor: pointer;
+}
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+.nav-item:active {
+    transition: background 0s;
+    background: rgba(255, 255, 255, 0.09);
+}
+#nav-underline {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    width: $nav-item-width;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.9);
+    transition: left 0.18s ease;
+}
+$nav-items: 4;
+@for $i from 1 through $nav-items {
+    .nav-item:nth-child(#{$i}).selected ~ #nav-underline {
+        left: ($i - 1) * $nav-item-width;
+    }
+}
+$toolbar-height: 40px;
+$blocks-spacing: 15px;
+#toolbar {
+    position: absolute;
+    top: $header-height + $blocks-spacing;
+    right: $blocks-spacing;
+    left: $blocks-spacing;
+    height: $toolbar-height;
+    background: #FFF;
+    border-radius: 3px;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.15);
+}
+#toolbar > li {
+    display: none;
+}
+#toolbar > li.active {
+    display: block;
+}
+#main {
+    position: absolute;
+    top: $header-height + $blocks-spacing + $toolbar-height + $blocks-spacing;
+    right: $blocks-spacing;
+    bottom: $blocks-spacing;
+    left: $blocks-spacing;
+    background: #FFF;
+    border-radius: 3px;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.18);
 }

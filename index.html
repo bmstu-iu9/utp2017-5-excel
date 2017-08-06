@@ -8,6 +8,7 @@
 
     <!-- Open Sans from Google Fonts -->
     <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700&amp;subset=cyrillic" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
     <link href="style/style.css" rel="stylesheet">
 
@@ -17,9 +18,15 @@
 
 "use strict";
 
-// Creating new Spreadsheet and attaching it to User Interface
-const spreadsheet = new Spreadsheet();
-ui.attach(spreadsheet);
+document.addEventListener("DOMContentLoaded", () => {
+
+    ui.init();
+
+    // Creating new Spreadsheet and attaching it to User Interface
+    const spreadsheet = new Spreadsheet();
+    ui.attach(spreadsheet);
+
+});
 
     </script>
 
@@ -27,7 +34,27 @@ ui.attach(spreadsheet);
 
 <body>
 
-
+<div id="header">
+    <div id="title">Spreadsheet <span id="version">0.0.1</span></div>
+    <ul id="nav">
+        <li class="nav-item selected">Formula</li>
+        <li class="nav-item">Format</li>
+        <li class="nav-item">Cells</li>
+        <li class="nav-item">File</li>
+        <li id="nav-underline"></li>
+    </ul>
+</div>
+<ul id="toolbar">
+    <li class="active">Toolbar #1</li>
+    <li>Toolbar #2</li>
+    <li>Toolbar #3</li>
+    <li>Toolbar #4</li>
+</ul>
+<div id="main">
+    <table id="table"></table>
+    <div class="add-cells material-icons" id="add-rows"></div>
+    <div class="add-cells material-icons" id="add-columns"></div>
+</div>
 
 </body>
 
