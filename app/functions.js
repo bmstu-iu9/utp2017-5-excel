@@ -1,4 +1,4 @@
-// КЛАССЫ ОШИБОК
+
 class FormulaError extends Error {
 	
 	constructor(reason, position) {
@@ -30,69 +30,43 @@ class QuantityOfArgumentsError extends FormulaError {
 
 
 
-//ПЕРВОСТЕПЕННЫЕ ФУНКЦИИ
+
 function NOT(value) { 
 	if (arguments.length !== 1) throw new QuantityOfArgumentsError(this.position);
 	if (typeof value === "boolean") return !value; 
-	else throw new ArgumentTypeError(this.position);
+	throw new ArgumentTypeError(this.position);
 }
-//alert(NOT(false));
 
-function AND(value1, value2) {
-	if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
-	if (typeof(value1) === "boolean" && typeof(value2) === "boolean") return value1 && value2;
-	else throw new ArgumentTypeError(this.position); 
+function AND(...values) {
+    if (values.length < 2) throw new QuantityOfArgumentsError(this.position);
+    if (values.some(e => typeof e !== "boolean")) throw new ArgumentTypeError(this.position);
+    return values.every(e => e);
 }
-//alert(AND(true, false));
 
-function OR(value1, value2) {
-	if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
-	if (typeof(value1) === "boolean" && typeof(value2) === "boolean") return value1 || value2;
-	else throw new ArgumentTypeError(this.position); 
+function OR(...values) {
+    if (values.length < 2) throw new QuantityOfArgumentsError(this.position);
+    if (values.some(e => typeof e !== "boolean")) throw new ArgumentTypeError(this.position);
+    return values.some(e => e);
 }
-//alert(OR(false, true));
 
-function CONCATENATE() {
-	if (arguments.length === 0) throw new QuantityOfArgumentsError(this.position);
-	var str_ret = "";
-	for (var i = 0; i < arguments.length; i++) {
-		if (!(typeof arguments[i] === "String")) throw new ArgumentTypeError(this.position); 
-		str_ret += arguments[i];
-	}
-	return str_ret;	
+function CONCATENATE(...args) {
+	if (args.length === 0) throw new QuantityOfArgumentsError(this.position);
+	if (args.some(e => typeof e !== "string")) throw new ArgumentTypeError(this.position);
+	return args.join("");
 }
-//alert(CONCATENATE("hi", " my name is", " Dan"));
 
 function NUMBER(value) { 
 	if (arguments.length !== 1) throw new QuantityOfArgumentsError(this.position);
 	if (!isNaN(value)) return +value; 
-	else throw new ArgumentTypeError(this.position); 
-}
-
-//alert(NUMBER("123"));
-
-// accessory function for BOOLEAN() function
-function is_str_false(str) {
-	if (typeof str !== "string") return false;
-	if (str.length !== 5) return false;
-	if ((str[0] === 'F' || str[0] === 'f') &&
-		(str[1] === 'A' || str[1] === 'a') && 
-		(str[2] === 'L' || str[2] === 'l') &&
-		(str[3] === 'S' || str[3] === 's') &&
-		(str[4] === 'E' || str[4] === 'e')) return true;
-	return false;
-		
+	throw new ArgumentTypeError(this.position);
 }
 
 
 function BOOLEAN(value) {
 	if (arguments.length !== 1) throw new QuantityOfArgumentsError(this.position);
-	if (value === "0" || value === 0 || value === false || is_str_false(value)) return false;
-	return true;
+	return !(!value || value === "0" || (typeof value === "string" && value.toLowerCase() === "false"));
 }
 
-/*var a = "string";
-alert(BOOLEAN(a));*/
 
 function STRING(value) {
 	if (arguments.length !== 1) throw new QuantityOfArgumentsError(this.position);
@@ -115,15 +89,15 @@ function ADD(a, b) {
 
 
 
-function MINUS(a, b) {
+function SUBTRACT(a, b) {
 	if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
 	if (typeof a !== "number" || typeof b !== "number") throw new ArgumentTypeError(this.position);
 	return a - b;
 }
 
 
-function UNARYMINUS(a) {
-	if (arguments.length != 1) throw new QuantityOfArgumentsError(this.position);
+function NEGATE(a) {
+	if (arguments.length !== 1) throw new QuantityOfArgumentsError(this.position);
 	if (typeof a !== "number") throw new ArgumentTypeError(this.position);
 	return -a;
 }
@@ -147,36 +121,36 @@ function DIVIDE(a, b) {
 //=
 function EQUALS(a, b) {
 	if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
-	if (typeof a !== typeof b || typeof a === "boolean") throw new ArgumentTypeError(this.position);
-	return a == b ? true : false;
+	if (typeof a !== typeof b) throw new ArgumentTypeError(this.position);
+	return a == b;
 }
 
 //>
 function GREATER(a, b) {
 	if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
 	if (typeof a !== typeof b || typeof a === "boolean") throw new ArgumentTypeError(this.position);
-	return a > b ? true : false;
+	return a > b;
 }
 
 //<=
 function LESSOREQUALS(a, b) {
 	if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
 	if (typeof a !== typeof b || typeof a === "boolean") throw new ArgumentTypeError(this.position);
-	return a <= b ? true : false;
+	return a <= b;
 }
 
 //<
 function LESS(a, b) {
 	if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
 	if (typeof a !== typeof b || typeof a === "boolean") throw new ArgumentTypeError(this.position);
-	return a < b ? true : false;
+	return a < b;
 }
 
 //>=
 function GREATEROREQUALS(a, b) {
 	if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
 	if (typeof a !== typeof b || typeof a === "boolean") throw new ArgumentTypeError(this.position);
-	return a >= b ? true : false;
+	return a >= b;
 }
 
 
