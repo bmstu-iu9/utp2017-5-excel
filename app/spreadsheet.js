@@ -165,10 +165,44 @@ Spreadsheet.Event = Object.freeze({
 
 });
 
+
+/**
+ * @class represents an error in formula
+ */
+Spreadsheet.FormulaError = class extends Error {
+	constructor(reason, position) {
+		super(`${reason} at character ${position}`);
+		this.name = "Formula Error";
+		this.position = position;
+	}
+}
+
+/**
+ * @class represents an argument type error in formula
+ */
+Spreadsheet.ArgumentTypeError = class extends Error {
+	constructor(position) {
+		super("Invalid type of argument(s)", position);
+		this.name = "Type of Argument Error";
+		this.position = position;
+	}
+}
+
+/**
+ * @class represents a quantity of arguments error in formula
+ */
+Spreadsheet.QuantityOfArgumentsError = class extends Error {
+	constructor(position) {
+		super("Invalid quantity of arguments", position);
+		this.name = "Quantity of Arguments Error";
+		this.position = position;
+	}
+}
+
 /**
  * @class represents a syntax error in formula
  */
-Spreadsheet.FormulaSyntaxError = class extends Error {
+Spreadsheet.FormulaSyntaxError = class extends FormulaError {
 
     /**
      * @constructor
@@ -200,3 +234,150 @@ Spreadsheet._Cell = class {
     }
 
 };
+
+Spreadsheet._Function = Object.freeze({
+	
+	NOT(value) { 
+		if (arguments.length !== 1) throw new QuantityOfArgumentsError(this.position);
+		if (typeof value === "boolean") return !value; 
+		throw new ArgumentTypeError(this.position);
+	},
+
+	AND(...values) {
+	    if (values.length < 2) throw new QuantityOfArgumentsError(this.position);
+	    if (values.some(e => typeof e !== "boolean")) throw new ArgumentTypeError(this.position);
+	    return values.every(e => e);
+	},
+
+	OR(...values) {
+	    if (values.length < 2) throw new QuantityOfArgumentsError(this.position);
+	    if (values.some(e => typeof e !== "boolean")) throw new ArgumentTypeError(this.position);
+	    return values.some(e => e);
+	},
+
+	CONCATENATE(...args) {
+		if (args.length === 0) throw new QuantityOfArgumentsError(this.position);
+		if (args.some(e => typeof e !== "string")) throw new ArgumentTypeError(this.position);
+		return args.join("");
+	},
+
+	NUMBER(value) { 
+		if (arguments.length !== 1) throw new QuantityOfArgumentsError(this.position);
+		if (!isNaN(value)) return +value; 
+		throw new ArgumentTypeError(this.position);
+	},
+
+
+	BOOLEAN(value) {
+		if (arguments.length !== 1) throw new QuantityOfArgumentsError(this.position);
+		return !(!value || value === "0" || (typeof value === "string" && value.toLowerCase() === "false"));
+	},
+
+
+	STRING(value) {
+		if (arguments.length !== 1) throw new QuantityOfArgumentsError(this.position);
+		switch (typeof value) {
+			case "boolean":
+				return value ? "TRUE" : "FALSE";
+			case "number":
+				return "" + value;
+			case "string":
+				return value;
+		}
+	},
+
+
+	ADD(a, b) {
+		if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
+		if (typeof a !== "number" || typeof b !== "number") throw new ArgumentTypeError(this.position);
+		return a + b;
+	},
+
+
+
+	SUBTRACT(a, b) {
+		if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
+		if (typeof a !== "number" || typeof b !== "number") throw new ArgumentTypeError(this.position);
+		return a - b;
+	},
+
+
+	NEGATE(a) {
+		if (arguments.length !== 1) throw new QuantityOfArgumentsError(this.position);
+		if (typeof a !== "number") throw new ArgumentTypeError(this.position);
+		return -a;
+	},
+
+
+
+	MULTIPLY(a, b) {
+		if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
+		if (typeof a !== "number" || typeof b !== "number") throw new ArgumentTypeError(this.position);
+		return a * b;
+	},
+
+
+
+	DIVIDE(a, b) {
+		if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
+		if (typeof a !== "number" || typeof b !== "number") throw new ArgumentTypeError(this.position);
+		return a / b;
+	},
+
+	//=
+	EQUALS(a, b) {
+		if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
+		if (typeof a !== typeof b) throw new ArgumentTypeError(this.position);
+		return a == b;
+	},
+
+	//>
+	GREATER(a, b) {
+		if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
+		if (typeof a !== typeof b || typeof a === "boolean") throw new ArgumentTypeError(this.position);
+		return a > b;
+	},
+
+	//<=
+	LESSOREQUALS(a, b) {
+		if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
+		if (typeof a !== typeof b || typeof a === "boolean") throw new ArgumentTypeError(this.position);
+		return a <= b;
+	},
+
+	//<
+	LESS(a, b) {
+		if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
+		if (typeof a !== typeof b || typeof a === "boolean") throw new ArgumentTypeError(this.position);
+		return a < b;
+	},
+
+	//>=
+	GREATEROREQUALS(a, b) {
+		if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
+		if (typeof a !== typeof b || typeof a === "boolean") throw new ArgumentTypeError(this.position);
+		return a >= b;
+	}
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
