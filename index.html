@@ -51,9 +51,15 @@ document.addEventListener("DOMContentLoaded", () => {
     <li>Toolbar #4</li>
 </ul>
 <div id="main">
-    <table id="table"></table>
-    <div class="add-cells material-icons" id="add-rows"></div>
-    <div class="add-cells material-icons" id="add-columns"></div>
+    <div id="container">
+        <table id="table"></table>
+        <div class="add-cells material-icons" id="add-rows"></div>
+        <div class="add-cells material-icons" id="add-columns"></div>
+    </div>
+</div>
+<div id="overlay">
+    <div class="drag-guide" id="drag-guide-vertical"></div>
+    <div class="drag-guide" id="drag-guide-horizontal"></div>
 </div>
 
 </body>
