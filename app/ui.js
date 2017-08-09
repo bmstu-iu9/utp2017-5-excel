@@ -44,8 +44,8 @@ const ui = {
             const dragGuideHorizontal = document.getElementById("drag-guide-horizontal");
             const overlay = document.getElementById("overlay");
             const CELL_MIN_WIDTH = 15;
-            const CELL_MIN_HEIGHT = 24;
-            document.addEventListener("mousedown", (event) => {
+            const CELL_MIN_HEIGHT = 22;
+            document.addEventListener("mousedown", event => {
                 const isDraggerVertical = event.target.matches(".dragger-vertical");
                 const isDraggerHorizontal = event.target.matches(".dragger-horizontal");
                 if (isDraggerVertical || isDraggerHorizontal) {
@@ -53,16 +53,15 @@ const ui = {
                     (isDraggerVertical ? dragGuideVertical : dragGuideHorizontal).style.display = "block";
                     overlay.classList.add("sensible");
                     overlay.style.cursor = getComputedStyle(event.target).cursor;
-                    const setPosition = (event) => {
-                        const rect = cell.getBoundingClientRect();
+                    const rect = cell.getBoundingClientRect();
+                    const setPosition = event => {
                         if(isDraggerVertical) {
-                            dragGuideVertical.style.left = Math.max(rect.left + CELL_MIN_WIDTH,event.clientX) + "px";
+                            dragGuideVertical.style.left = Math.max(rect.left + CELL_MIN_WIDTH, event.clientX) + "px";
                         } else {
                             dragGuideHorizontal.style.top = Math.max(rect.top + CELL_MIN_HEIGHT, event.clientY) + "px";
                         }
                     };
-                    const apply = (event) => {
-                        const rect = cell.getBoundingClientRect();
+                    const apply = event => {
                         if(isDraggerVertical) {
                             cell.style.width = cell.style.minWidth = Math.max(CELL_MIN_WIDTH, event.clientX - rect.left) + "px";
                         } else {

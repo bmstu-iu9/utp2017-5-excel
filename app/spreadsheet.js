@@ -2,7 +2,7 @@
  * @class represents and object that is able to store and call event listeners
  * @example
  *   const manager = new EventManager();
- *   const tag = new Symbol("my_event");
+ *   const tag = Symbol("my_event");
  *   const listener = (...args) => console.log(args);
  *   manager.addEventListener(tag, listener);
  *   manager.triggerEvent(tag, 1, 2, 3);
@@ -89,7 +89,7 @@ const Spreadsheet = class extends EventManager {
 
         super();
         /**
-         * @type {!Array<Spreadsheet._Cell>} Array of spreadsheet cells
+         * @type {!Array<Array<Spreadsheet._Cell>>} Array of spreadsheet cells
          */
         this.cells = [];
     }
@@ -105,7 +105,7 @@ const Spreadsheet = class extends EventManager {
         if (i < 0 || j < 0) return;
         if (i > columns) {
             for (let index = columns - 1; index < i; index++) {
-                this.cells[index] = [new _Cell()];
+                this.cells[index] = [new Spreadsheet._Cell()];
             }
         } else if (i < columns) {
             for (let index = i; index < columns; index++) {
@@ -121,16 +121,7 @@ const Spreadsheet = class extends EventManager {
         }
         for (let indexI = 0; indexI < i; indexI++) {
             for (let indexJ = this.cells[indexI].length ; indexJ < j; indexJ++) {
-                this.cells[indexI][indexJ] = new _Cell();
-            }
-        }
-    }
-
-    /** Clears table */
-    clearTable() {
-        for (let indexI = 0; indexI < this.i; indexI++) {
-            for (let indexJ = 0 ; indexJ < this.j; indexJ++) {
-                this.cells[indexI][indexJ] = new _Cell();
+                this.cells[indexI][indexJ] = new Spreadsheet._Cell();
             }
         }
     }
@@ -170,39 +161,39 @@ Spreadsheet.Event = Object.freeze({
  * @class represents an error in formula
  */
 Spreadsheet.FormulaError = class extends Error {
-	constructor(reason, position) {
-		super(`${reason} at character ${position}`);
-		this.name = "Formula Error";
-		this.position = position;
-	}
-}
+    constructor(reason, position) {
+        super(`${reason} at character ${position}`);
+        this.name = "Formula Error";
+        this.position = position;
+    }
+};
 
 /**
  * @class represents an argument type error in formula
  */
-Spreadsheet.ArgumentTypeError = class extends Error {
-	constructor(position) {
-		super("Invalid type of argument(s)", position);
-		this.name = "Type of Argument Error";
-		this.position = position;
-	}
-}
+Spreadsheet.ArgumentTypeError = class extends Spreadsheet.FormulaError {
+    constructor(position) {
+        super("Invalid type of argument(s)", position);
+        this.name = "Type of Argument Error";
+        this.position = position;
+    }
+};
 
 /**
  * @class represents a quantity of arguments error in formula
  */
-Spreadsheet.QuantityOfArgumentsError = class extends Error {
-	constructor(position) {
-		super("Invalid quantity of arguments", position);
-		this.name = "Quantity of Arguments Error";
-		this.position = position;
-	}
-}
+Spreadsheet.QuantityOfArgumentsError = class extends Spreadsheet.FormulaError {
+    constructor(position) {
+        super("Invalid quantity of arguments", position);
+        this.name = "Quantity of Arguments Error";
+        this.position = position;
+    }
+};
 
 /**
  * @class represents a syntax error in formula
  */
-Spreadsheet.FormulaSyntaxError = class extends FormulaError {
+Spreadsheet.FormulaSyntaxError = class extends Spreadsheet.FormulaError {
 
     /**
      * @constructor
@@ -235,129 +226,234 @@ Spreadsheet._Cell = class {
 
 };
 
+/**
+ * Enum for functions that can be used in formulas
+ * @enum
+ * @private
+ * @readonly
+ */
 Spreadsheet._Function = Object.freeze({
-	
-	NOT(value) { 
-		if (arguments.length !== 1) throw new QuantityOfArgumentsError(this.position);
-		if (typeof value === "boolean") return !value; 
-		throw new ArgumentTypeError(this.position);
-	},
 
-	AND(...values) {
-	    if (values.length < 2) throw new QuantityOfArgumentsError(this.position);
-	    if (values.some(e => typeof e !== "boolean")) throw new ArgumentTypeError(this.position);
-	    return values.every(e => e);
-	},
+    /**
+     * Logical NOT
+     * @param {boolean} value
+     * @returns {boolean}
+     * @function
+     */
+    NOT(value) { 
+        if (arguments.length !== 1) throw new QuantityOfArgumentsError(this.position);
+        if (typeof value === "boolean") return !value; 
+        throw new ArgumentTypeError(this.position);
+    },
 
-	OR(...values) {
-	    if (values.length < 2) throw new QuantityOfArgumentsError(this.position);
-	    if (values.some(e => typeof e !== "boolean")) throw new ArgumentTypeError(this.position);
-	    return values.some(e => e);
-	},
+    /**
+     * Logical AND
+     * @param {...boolean} values
+     * @returns {boolean}
+     * @function
+     */
+    AND(...values) {
+        if (values.length < 2) throw new QuantityOfArgumentsError(this.position);
+        if (values.some(e => typeof e !== "boolean")) throw new ArgumentTypeError(this.position);
+        return values.every(e => e);
+    },
 
-	CONCATENATE(...args) {
-		if (args.length === 0) throw new QuantityOfArgumentsError(this.position);
-		if (args.some(e => typeof e !== "string")) throw new ArgumentTypeError(this.position);
-		return args.join("");
-	},
+    /**
+     * Logical OR
+     * @param {...boolean} values
+     * @returns {boolean}
+     * @function
+     */
+    OR(...values) {
+        if (values.length < 2) throw new QuantityOfArgumentsError(this.position);
+        if (values.some(e => typeof e !== "boolean")) throw new ArgumentTypeError(this.position);
+        return values.some(e => e);
+    },
 
-	NUMBER(value) { 
-		if (arguments.length !== 1) throw new QuantityOfArgumentsError(this.position);
-		if (!isNaN(value)) return +value; 
-		throw new ArgumentTypeError(this.position);
-	},
+    /**
+     * Concatenates strings
+     * @param {...string} args
+     * @returns {string}
+     * @function
+     */
+    CONCATENATE(...args) {
+        if (args.length === 0) throw new QuantityOfArgumentsError(this.position);
+        if (args.some(e => typeof e !== "string")) throw new ArgumentTypeError(this.position);
+        return args.join("");
+    },
+
+    /**
+     * Casts value to number
+     * @param {number|string|boolean} value
+     * @returns {number}
+     * @function
+     */
+    NUMBER(value) { 
+        if (arguments.length !== 1) throw new QuantityOfArgumentsError(this.position);
+        if (!isNaN(value)) return +value; 
+        throw new ArgumentTypeError(this.position);
+    },
+
+    /**
+     * Casts value to boolean
+     * @param {number|string|boolean} value
+     * @returns {boolean}
+     * @function
+     */
+    BOOLEAN(value) {
+        if (arguments.length !== 1) throw new QuantityOfArgumentsError(this.position);
+        return !(!value || value === "0" || (typeof value === "string" && value.toLowerCase() === "false"));
+    },
+
+    /**
+     * Casts value to string
+     * @param {number|string|boolean} value
+     * @returns {string}
+     * @function
+     */
+    STRING(value) {
+        if (arguments.length !== 1) throw new QuantityOfArgumentsError(this.position);
+        switch (typeof value) {
+            case "boolean":
+                return value ? "TRUE" : "FALSE";
+            case "number":
+                return "" + value;
+            case "string":
+                return value;
+        }
+    },
+
+    /**
+     * Add up to numbers; also a `+` operator
+     * @param {number} a
+     * @param {number} b
+     * @returns {number}
+     * @function
+     */
+    ADD(a, b) {
+        if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
+        if (typeof a !== "number" || typeof b !== "number") throw new ArgumentTypeError(this.position);
+        return a + b;
+    },
 
 
-	BOOLEAN(value) {
-		if (arguments.length !== 1) throw new QuantityOfArgumentsError(this.position);
-		return !(!value || value === "0" || (typeof value === "string" && value.toLowerCase() === "false"));
-	},
+    /**
+     * Subtracts second number from first; also a `-` operator
+     * @param {number} a
+     * @param {number} b
+     * @returns {number}
+     * @function
+     */
+    SUBTRACT(a, b) {
+        if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
+        if (typeof a !== "number" || typeof b !== "number") throw new ArgumentTypeError(this.position);
+        return a - b;
+    },
+
+    /**
+     * Negates a number; also a unary `-` operator
+     * @param {number} a
+     * @returns {number}
+     * @function
+     */
+    NEGATE(a) {
+        if (arguments.length !== 1) throw new QuantityOfArgumentsError(this.position);
+        if (typeof a !== "number") throw new ArgumentTypeError(this.position);
+        return -a;
+    },
+
+    /**
+     * Multiplies two numbers; also a `*` operator
+     * @param {number} a
+     * @param {number} b
+     * @returns {number}
+     * @function
+     */
+    MULTIPLY(a, b) {
+        if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
+        if (typeof a !== "number" || typeof b !== "number") throw new ArgumentTypeError(this.position);
+        return a * b;
+    },
 
 
-	STRING(value) {
-		if (arguments.length !== 1) throw new QuantityOfArgumentsError(this.position);
-		switch (typeof value) {
-			case "boolean":
-				return value ? "TRUE" : "FALSE";
-			case "number":
-				return "" + value;
-			case "string":
-				return value;
-		}
-	},
+    /**
+     * Divides first number by second; also a `/` operator
+     * @param {number} a
+     * @param {number} b
+     * @returns {number}
+     * @function
+     */
+    DIVIDE(a, b) {
+        if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
+        if (typeof a !== "number" || typeof b !== "number") throw new ArgumentTypeError(this.position);
+        return a / b;
+    },
 
+    /**
+     * Checks if two values are equal; also an `=` operator
+     * @param {number|string|boolean} a
+     * @param {number|string|boolean} b
+     * @returns {boolean}
+     * @function
+     */
+    EQUALS(a, b) {
+        if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
+        if (typeof a !== typeof b) throw new ArgumentTypeError(this.position);
+        return a == b;
+    },
 
-	ADD(a, b) {
-		if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
-		if (typeof a !== "number" || typeof b !== "number") throw new ArgumentTypeError(this.position);
-		return a + b;
-	},
+    /**
+     * Checks if a is greater than b; also a `>` operator
+     * @param {number} a
+     * @param {number} b
+     * @returns {boolean}
+     * @function
+     */
+    GREATER(a, b) {
+        if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
+        if (typeof a !== typeof b || typeof a === "boolean") throw new ArgumentTypeError(this.position);
+        return a > b;
+    },
 
+    /**
+     * Checks if a is less or equal than b; also a `<=` operator
+     * @param {number} a
+     * @param {number} b
+     * @returns {boolean}
+     * @function
+     */
+    LESSOREQUALS(a, b) {
+        if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
+        if (typeof a !== typeof b || typeof a === "boolean") throw new ArgumentTypeError(this.position);
+        return a <= b;
+    },
 
+    /**
+     * Checks if a is less than b; also a `<` operator
+     * @param {number} a
+     * @param {number} b
+     * @returns {boolean}
+     * @function
+     */
+    LESS(a, b) {
+        if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
+        if (typeof a !== typeof b || typeof a === "boolean") throw new ArgumentTypeError(this.position);
+        return a < b;
+    },
 
-	SUBTRACT(a, b) {
-		if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
-		if (typeof a !== "number" || typeof b !== "number") throw new ArgumentTypeError(this.position);
-		return a - b;
-	},
-
-
-	NEGATE(a) {
-		if (arguments.length !== 1) throw new QuantityOfArgumentsError(this.position);
-		if (typeof a !== "number") throw new ArgumentTypeError(this.position);
-		return -a;
-	},
-
-
-
-	MULTIPLY(a, b) {
-		if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
-		if (typeof a !== "number" || typeof b !== "number") throw new ArgumentTypeError(this.position);
-		return a * b;
-	},
-
-
-
-	DIVIDE(a, b) {
-		if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
-		if (typeof a !== "number" || typeof b !== "number") throw new ArgumentTypeError(this.position);
-		return a / b;
-	},
-
-	//=
-	EQUALS(a, b) {
-		if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
-		if (typeof a !== typeof b) throw new ArgumentTypeError(this.position);
-		return a == b;
-	},
-
-	//>
-	GREATER(a, b) {
-		if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
-		if (typeof a !== typeof b || typeof a === "boolean") throw new ArgumentTypeError(this.position);
-		return a > b;
-	},
-
-	//<=
-	LESSOREQUALS(a, b) {
-		if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
-		if (typeof a !== typeof b || typeof a === "boolean") throw new ArgumentTypeError(this.position);
-		return a <= b;
-	},
-
-	//<
-	LESS(a, b) {
-		if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
-		if (typeof a !== typeof b || typeof a === "boolean") throw new ArgumentTypeError(this.position);
-		return a < b;
-	},
-
-	//>=
-	GREATEROREQUALS(a, b) {
-		if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
-		if (typeof a !== typeof b || typeof a === "boolean") throw new ArgumentTypeError(this.position);
-		return a >= b;
-	}
+    /**
+     * Checks if a is greater or equal than b; also a `>=` operator
+     * @param {number} a
+     * @param {number} b
+     * @returns {boolean}
+     * @function
+     */
+    GREATEROREQUALS(a, b) {
+        if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
+        if (typeof a !== typeof b || typeof a === "boolean") throw new ArgumentTypeError(this.position);
+        return a >= b;
+    }
+    
 });
 
 

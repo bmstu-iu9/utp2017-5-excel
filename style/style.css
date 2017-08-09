@@ -75,7 +75,6 @@ ul, ol {
   background: rgba(255, 255, 255, 0.09); }
 
 #nav-underline {
-  content: "";
   position: absolute;
   bottom: 0;
   width: 120px;
@@ -142,6 +141,7 @@ ul, ol {
   #table td.column-header, #table td.row-header {
     position: relative;
     background: #F3F3F3;
+    background-clip: padding-box;
     font-weight: 600;
     color: #424242;
     text-align: center; }

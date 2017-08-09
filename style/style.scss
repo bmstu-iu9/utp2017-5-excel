@@ -1,11 +1,11 @@
 $font-main: 'Open Sans', sans-serif;
 $color-theme: #0F9D58;
 
-@mixin user-select($value: 'none') {
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
+@mixin user-select($value: none) {
+    -webkit-user-select: $value;
+    -moz-user-select: $value;
+    -ms-user-select: $value;
+    user-select: $value;
 }
 
 * {
@@ -84,7 +84,6 @@ $nav-item-width: 120px;
     background: rgba(255, 255, 255, 0.09);
 }
 #nav-underline {
-    content: "";
     position: absolute;
     bottom: 0;
     width: $nav-item-width;
@@ -149,6 +148,7 @@ $blocks-spacing: 15px;
     td.column-header, td.row-header {
         position: relative;
         background: #F3F3F3;
+        background-clip: padding-box;
         font-weight: 600;
         color: #424242;
         text-align: center;
