@@ -132,15 +132,18 @@ $blocks-spacing: 15px;
     overflow: auto;
 }
 #table {
+
     table-layout: fixed;
     border-collapse: collapse;
     border: 1px solid #D9D9D9;
     border-radius: inherit;
+
     tr {
         height: 22px;
     }
     td {
         border: 1px solid #D9D9D9;
+        box-sizing: border-box;
         font-size: 14px;
         color: #1F1F1F;
         font-weight: 400;
@@ -160,6 +163,7 @@ $blocks-spacing: 15px;
     td.column-header {
         min-width: 100px;
     }
+
     .dragger-vertical {
         position: absolute;
         top: 0; bottom: 0;
@@ -174,6 +178,27 @@ $blocks-spacing: 15px;
         height: 6px;
         cursor: ns-resize;
     }
+
+    $selection-border-style: 2px solid #4285F4;
+    td.selected {
+        background-color: #ECF3FF;
+    }
+    td.selected-first {
+        background-color: #FFF;
+    }
+    td.selection-border-top {
+        border-top: $selection-border-style !important;
+    }
+    td.selection-border-right {
+        border-right: $selection-border-style !important;
+    }
+    td.selection-border-bottom {
+        border-bottom: $selection-border-style !important;
+    }
+    td.selection-border-left {
+        border-left: $selection-border-style !important;
+    }
+
 }
 #overlay {
     position: absolute;

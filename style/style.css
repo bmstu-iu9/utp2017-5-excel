@@ -135,6 +135,7 @@ ul, ol {
     height: 22px; }
   #table td {
     border: 1px solid #D9D9D9;
+    box-sizing: border-box;
     font-size: 14px;
     color: #1F1F1F;
     font-weight: 400; }
@@ -164,6 +165,18 @@ ul, ol {
     bottom: -3px;
     height: 6px;
     cursor: ns-resize; }
+  #table td.selected {
+    background-color: #ECF3FF; }
+  #table td.selected-first {
+    background-color: #FFF; }
+  #table td.selection-border-top {
+    border-top: 2px solid #4285F4 !important; }
+  #table td.selection-border-right {
+    border-right: 2px solid #4285F4 !important; }
+  #table td.selection-border-bottom {
+    border-bottom: 2px solid #4285F4 !important; }
+  #table td.selection-border-left {
+    border-left: 2px solid #4285F4 !important; }
 
 #overlay {
   position: absolute;

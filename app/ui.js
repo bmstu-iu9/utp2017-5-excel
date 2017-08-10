@@ -79,6 +79,39 @@ const ui = {
             });
         }
 
+        { // Making cells selectable by dragging
+            const table = document.getElementById("table");
+            const isRegularCell = element => {
+                return element.matches("#table td") &&
+                    !element.classList.contains("row-header") && !element.classList.contains("column-header");
+            };
+            const getLocationOf = cell => {
+                const tableRow = cell.parentElement;
+                const column = Array.prototype.indexOf.call(tableRow.children, cell) - 1;
+                const row = Array.prototype.indexOf.call(tableRow.parentElement.children, tableRow) - 1;
+                return new ui.CellLocation(row, column);
+            };
+            document.addEventListener("mousedown", event => {
+                if(isRegularCell(event.target)) {
+                    const startLocation = getLocationOf(event.target);
+                    console.log(JSON.stringify(startLocation))
+                    ui.selection.set(startLocation, startLocation);
+                    const setSelection = event => {
+                        if(isRegularCell(event.target)) {
+                            const endLocation = getLocationOf(event.target);
+                            ui.selection.set(startLocation, endLocation);
+                        }
+                    };
+                    const finish = () => {
+                        table.removeEventListener("mouseover", setSelection);
+                        document.removeEventListener("mouseup", finish);
+                    };
+                    table.addEventListener("mouseover", setSelection);
+                    document.addEventListener("mouseup", finish);
+                }
+            });
+        }
+
     },
 
     /**
@@ -150,6 +183,104 @@ const ui = {
             row.appendChild(cell);
         }
         return row;
+    },
+
+    /**
+     * Currently selected cells
+     */
+    selection: {
+
+        /**
+         * First corner of the selection
+         * @type {ui.CellLocation}
+         */
+        start: null,
+        /**
+         * Second corner of the selection
+         * @type {ui.CellLocation}
+         */
+        end: null,
+
+        /**
+         * Calculates width of the selection
+         * @returns {int}
+         */
+        width() {
+            return Math.abs(this.end.column - this.start.column);
+        },
+
+        /**
+         * Calculates height of the selection
+         * @returns {int}
+         */
+        height() {
+            return Math.abs(this.end.row - this.start.row);
+        },
+
+        /**
+         * Sets selection
+         * @param {ui.CellLocation} start
+         * @param {ui.CellLocation} end
+         */
+        set(start, end) {
+
+            if(this.start !== null) this.clear();
+            this.start = start;
+            this.end = end;
+
+            const startRow = Math.min(this.start.row, this.end.row);
+            const startColumn = Math.min(this.start.column, this.end.column);
+            const rows = document.querySelectorAll("#table tr");
+            for(let i = startRow; i <= startRow + this.height(); i++) {
+                const cells = rows[i + 1].children;
+                for(let j = startColumn; j <= startColumn + this.width(); j++) {
+                    const cell = cells[j + 1];
+                    cell.classList.add("selected");
+                    if(i === this.start.row && j === this.start.column) cell.classList.add("selected-first");
+                    if(i === startRow) cell.classList.add("selection-border-top");
+                    if(i === startRow + this.height()) cell.classList.add("selection-border-bottom");
+                    if(j === startColumn) cell.classList.add("selection-border-left");
+                    if(j === startColumn + this.width()) cell.classList.add("selection-border-right");
+                }
+            }
+
+        },
+
+        /**
+         * Removes current selection
+         */
+        clear() {
+
+            this.start = null;
+            this.end = null;
+
+            document.querySelectorAll("#table td.selected").forEach(element => {
+                [
+                    "selected", "selected-first",
+                    "selection-border-top", "selection-border-right", "selection-border-left", "selection-border-bottom"
+                ].forEach(className => element.classList.remove(className));
+            });
+
+        }
+
+    }
+
+};
+
+/**
+ * Represents a pair of coordinates of a cell
+ * @class
+ */
+ui.CellLocation = class {
+
+    /**
+     * @param row
+     * @param column
+     * @constructor
+     */
+    constructor(row, column) {
+        this.row = row;
+        this.column = column;
     }
 
 };
