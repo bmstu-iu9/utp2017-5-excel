@@ -490,14 +490,119 @@ Spreadsheet._Function = Object.freeze({
 
 
 
+Spreadsheet._CellGraph = class {
+
+    constructor(vertices) {
+        this.vertices = vertices;
+    }
+    addVertex(vertex) {
+        this.vertices.push(vertex);
+    }
+    addEdge(vertex1, vertex2) {
+        vertex1.edges.push(vertex2);
+        vertex2.edges.push(vertex1);
+    }
+    findCycleFrom(vertex) {
+        vertex.ifCyclic(vertex);
+        if (vertex.cycle.length === 0) return null;
+        else return vertex.cycle;
+    }
+}
+
+Spreadsheet._CellGraph.Vertex = class {
+    constructor(row, column, edges) {
+        this.row = row;
+        this.column = column;
+        this.edges = edges;
+        this.color = 0;
+        this.parent = null;
+        this.cycle = [];
+    }
+
+    ifCyclic(current)  {
+        
+        current.color = 1;  
+        if (current.edges !== null) {
+            current.edges.forEach(to => {
+                if (to.color === 0) {
+                    to.parent = current;
+                    this.ifCyclic(to);
+                }
+                else if (to === this) {
+                    this.parent = current;
+                    this.addAll();
+                }
+            });
+        }
+        current.color = 2;
+    }
+
+    addAll() {
+        let current = this.parent;
+        while (current !== this) {
+            if (this.findEdge(current) === -1) this.cycle.push(current);
+            current = current.parent;
+        }
+    }
+    
+    findEdge(vertex) {
+        const size = this.cycle.length;
+        for (let i = 0; i < size; i++) {
+            if (this.cycle[i] === vertex) {
+                return i;
+            }
+        }
+        return -1;
+    }
+}
+
+/*let v1 = new Spreadsheet._CellGraph.Vertex(1, 1, null);
+let v2 = new Spreadsheet._CellGraph.Vertex(1, 2, null);
+let v3 = new Spreadsheet._CellGraph.Vertex(1, 3, null);
+let v4 = new Spreadsheet._CellGraph.Vertex(1, 4, null);
+let v5 = new Spreadsheet._CellGraph.Vertex(1, 5, null);
+let v6 = new Spreadsheet._CellGraph.Vertex(1, 6, null);
+
+let a1 = [];
+a1.push(v2);
+a1.push(v6);
+v1.edges = a1;
+
+let a2 = [];
+a2.push(v1);
+a2.push(v1);
+a2.push(v3);
+v2.edges = a2;
 
 
+let a3 = [];
+a3.push(v4);
+v3.edges = a3;
+
+let a4 = [];
+a4.push(v5);
+v4.edges = a4;
+
+let a5 = [];
+a5.push(v2);
+a5.push(v1);
+v5.edges = a5;
+
+let arr = [];
+arr.push(v1);
+arr.push(v2);
+arr.push(v3);
+arr.push(v4);
+arr.push(v5);
+arr.push(v6);
 
 
+let g = new Spreadsheet._CellGraph(arr);
+let array = g.findCycleFrom(v1);
 
-
-
-
+for (let i = 0; i < v1.cycle.length; i++) {
+    alert(v1.cycle[i].column)
+}*/
 
 
 
