@@ -16,7 +16,7 @@ const ui = {
 
         document.querySelectorAll(".nav-item")
             .forEach((element, index) => element.addEventListener("click", () => {
-                element.parentNode.querySelector(".selected").classList.remove("selected");
+                element.parentElement.querySelector(".selected").classList.remove("selected");
                 element.classList.add("selected");
                 const toolbars = document.querySelectorAll("#toolbar > li");
                 toolbars.forEach(element => element.classList.remove("active"));
@@ -43,7 +43,7 @@ const ui = {
             const dragGuideVertical = document.getElementById("drag-guide-vertical");
             const dragGuideHorizontal = document.getElementById("drag-guide-horizontal");
             const overlay = document.getElementById("overlay");
-            const CELL_MIN_WIDTH = 15;
+            const CELL_MIN_WIDTH = 22;
             const CELL_MIN_HEIGHT = 22;
             document.addEventListener("mousedown", event => {
                 const isDraggerVertical = event.target.matches(".dragger-vertical");
@@ -55,14 +55,14 @@ const ui = {
                     overlay.style.cursor = getComputedStyle(event.target).cursor;
                     const rect = cell.getBoundingClientRect();
                     const setPosition = event => {
-                        if(isDraggerVertical) {
+                        if (isDraggerVertical) {
                             dragGuideVertical.style.left = Math.max(rect.left + CELL_MIN_WIDTH, event.clientX) + "px";
                         } else {
                             dragGuideHorizontal.style.top = Math.max(rect.top + CELL_MIN_HEIGHT, event.clientY) + "px";
                         }
                     };
                     const apply = event => {
-                        if(isDraggerVertical) {
+                        if (isDraggerVertical) {
                             cell.style.width = cell.style.minWidth = Math.max(CELL_MIN_WIDTH, event.clientX - rect.left) + "px";
                         } else {
                             cell.style.height = Math.max(CELL_MIN_HEIGHT, event.clientY - rect.top) + "px";
@@ -81,6 +81,8 @@ const ui = {
 
         { // Making cells selectable by dragging
             const table = document.getElementById("table");
+            const formulaInput = document.getElementById("formula");
+            const formulaError = document.getElementById("formula-error");
             const isRegularCell = element => {
                 return element.matches("#table td") &&
                     !element.classList.contains("row-header") && !element.classList.contains("column-header");
@@ -92,12 +94,15 @@ const ui = {
                 return new ui.CellLocation(row, column);
             };
             document.addEventListener("mousedown", event => {
-                if(isRegularCell(event.target)) {
+                if (isRegularCell(event.target)) {
                     const startLocation = getLocationOf(event.target);
-                    console.log(JSON.stringify(startLocation))
                     ui.selection.set(startLocation, startLocation);
+                    const formula = ui.spreadsheet.getFormula(startLocation.row, startLocation.column);
+                    formulaInput.textContent = formula && "=" + formula;
+                    const error = event.target.getAttribute("data-error");
+                    formulaError.textContent = error || "";
                     const setSelection = event => {
-                        if(isRegularCell(event.target)) {
+                        if (isRegularCell(event.target)) {
                             const endLocation = getLocationOf(event.target);
                             ui.selection.set(startLocation, endLocation);
                         }
@@ -112,6 +117,64 @@ const ui = {
             });
         }
 
+        { // Managing formulas editing
+            let cellEdited = null;
+            const formulaInput = document.getElementById("formula");
+            const updateCell = () => {
+                cellEdited = ui.selection.start;
+                if(!ui._getCellByLocation(cellEdited).classList.contains("error")) {
+                    ui._setCellText(cellEdited, formulaInput.textContent);
+                }
+            };
+            document.addEventListener("keypress", event => {
+                if (ui.selection.exists() && event.target === document.body && event.key.length === 1) {
+                    document.getElementById("nav-formula").click();
+                    formulaInput.focus();
+                }
+            });
+            const applyFormula = () => {
+                ui._setCellText(cellEdited, "");
+                let formulaText = formulaInput.textContent.trim();
+                if (formulaText.charAt(0) !== "=") {
+                    // If text in the formula input does not represent a number or a boolean, converting it to string literal
+                    if (formulaText.length && isNaN(formulaText) && formulaText !== "TRUE" && formulaText !== "FALSE") {
+                        formulaText = JSON.stringify(formulaText);
+                    }
+                } else formulaText = formulaText.substring(1);
+                try {
+                    ui.spreadsheet.setFormula(cellEdited.row, cellEdited.column, formulaText);
+                } catch (error) {
+                    if (error instanceof Spreadsheet.FormulaError) {
+
+                    } else console.log(error);
+                }
+            };
+            formulaInput.addEventListener("keyup", event => {
+                if (event.code === "Enter") {
+                    // Saving formula on Enter
+                    applyFormula();
+                    event.preventDefault();
+                } else updateCell();
+            });
+            formulaInput.addEventListener("keydown", event => {
+                // Preventing line breaking in the input
+                if (event.code === "Enter") event.preventDefault();
+                else updateCell();
+            });
+            // Saving formula, if the input loses focus
+            formulaInput.addEventListener("blur", applyFormula);
+            // Preventing pasting of formatted text into the input
+            formulaInput.addEventListener("paste", () => setTimeout(() => {
+                formulaInput.textContent = formulaInput.textContent.replace(/\xa0/g, " ");
+                const range = document.createRange();
+                range.selectNodeContents(formulaInput);
+                range.collapse(false);
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+            }, 1));
+        }
+
     },
 
     /**
@@ -120,8 +183,36 @@ const ui = {
      */
     attach(spreadsheet) {
 
-        spreadsheet.addEventListener(Spreadsheet.Event.CELL_VALUE_UPDATED, (i, j, value) => {
+        this.spreadsheet = spreadsheet;
 
+        spreadsheet.addEventListener(Spreadsheet.Event.CELL_VALUE_UPDATED, (row, column, value) => {
+            let text = "";
+            let error = "";
+            const location = new ui.CellLocation(row, column);
+            switch(typeof value) {
+                case "string":
+                case "number":
+                    text = value + "";
+                    break;
+                case "boolean":
+                    text = value ? "TRUE" : "FALSE";
+                    break;
+                default:
+                    error = "Calculated value is not printable";
+
+            }
+            ui._setCellText(location, text);
+            ui._setError(location, error);
+        });
+
+        spreadsheet.addEventListener(Spreadsheet.Event.CELL_FORMULA_UPDATED, (row, column, formula) => {
+            if(ui.selection.exists() && row === ui.selection.start.row && column === ui.selection.start.column) {
+                document.getElementById("formula").textContent = "=" + formula;
+            }
+        });
+
+        spreadsheet.addEventListener(Spreadsheet.Event.CELL_CIRCULAR_DEPENDENCY_DETECTED, (row, column) => {
+            ui._setError(new ui.CellLocation(row, column), "Circular dependency detected");
         });
 
     },
@@ -169,6 +260,7 @@ const ui = {
      * @private
      */
     _createRow(index) {
+
         const row = document.createElement("tr");
         for (let j = 0; j <= ui.DEFAULT_COLUMNS; j++) {
             const cell = document.createElement("td");
@@ -183,6 +275,86 @@ const ui = {
             row.appendChild(cell);
         }
         return row;
+
+    },
+
+    /**
+     * Gets cell element by its coordinates
+     * @param {ui.CellLocation} location
+     * @returns {HTMLElement}
+     * @private
+     */
+    _getCellByLocation(location) {
+        return document.querySelectorAll("#table tr")[location.row + 1].children[location.column + 1];
+    },
+
+    /**
+     * Re-renders text in the cell
+     * @param {HTMLElement} cell
+     * @private
+     */
+    _updateCellText(cell) {
+        const value = cell.getAttribute("data-value");
+        if (value.length < 2) {
+            cell.textContent = value;
+            return;
+        }
+        const originalWidth = cell.clientWidth;
+        cell.textContent = value;
+        // If text doesn't fit in the cell, shortening it
+        if (cell.clientWidth > originalWidth) {
+            const hidden = document.getElementById("hidden");
+            ["fontFamily", "fontSize", "fontWeight"].forEach(style => hidden.style[style] = cell.style[style]);
+            for (let i = 1; i < value.length; i++) {
+                hidden.textContent = value.substring(0, i + 1) + "\u2026";
+                if (hidden.clientWidth > originalWidth) {
+                    cell.textContent = value.substring(0, i) + "\u2026";
+                    break;
+                }
+            }
+        }
+    },
+
+    /**
+     * Sets text to a cell
+     * @param {ui.CellLocation} location
+     * @param {string} value
+     * @private
+     */
+    _setCellText(location, value) {
+        const cell = ui._getCellByLocation(location);
+        cell.setAttribute("data-value", value);
+        ui._updateCellText(cell);
+    },
+
+    /**
+     * Sets that cell contains an error and stores its description
+     * @param {ui.CellLocation} location
+     * @param {string} text
+     * @private
+     */
+    _setError(location, text) {
+        if(ui.selection.exists() && location.row === ui.selection.start.row && location.column === ui.selection.start.column) {
+            document.getElementById("formula-error").textContent = text;
+        }
+        const cell = ui._getCellByLocation(location);
+        if (text) {
+            cell.classList.add("error");
+            cell.setAttribute("data-value", "");
+            cell.textContent = "";
+        }
+        else cell.classList.remove("error");
+        cell.setAttribute("data-error", text);
+    },
+
+    /**
+     * Tells UI that there are selected cells and controls should be enabled
+     * @private
+     */
+    _setTableHasSelection() {
+
+        document.getElementById("formula").contentEditable = true;
+
     },
 
     /**
@@ -200,6 +372,14 @@ const ui = {
          * @type {ui.CellLocation}
          */
         end: null,
+
+        /**
+         * Check if there are selected cells
+         * @returns {boolean}
+         */
+        exists() {
+            return this.start !== null && this.end !== null
+        },
 
         /**
          * Calculates width of the selection
@@ -243,6 +423,8 @@ const ui = {
                     if(j === startColumn + this.width()) cell.classList.add("selection-border-right");
                 }
             }
+
+            ui._setTableHasSelection();
 
         },
 

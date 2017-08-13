@@ -8,6 +8,7 @@
 
     <!-- Open Sans from Google Fonts -->
     <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700&amp;subset=cyrillic" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Cousine&amp;subset=cyrillic,cyrillic-ext,latin-ext" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
     <link href="style/style.css" rel="stylesheet">
@@ -37,7 +38,7 @@ document.addEventListener("DOMContentLoaded", () => {
 <div id="header">
     <div id="title">Spreadsheet <span id="version">0.0.1</span></div>
     <ul id="nav">
-        <li class="nav-item selected">Formula</li>
+        <li class="nav-item selected" id="nav-formula">Formula</li>
         <li class="nav-item">Format</li>
         <li class="nav-item">Cells</li>
         <li class="nav-item">File</li>
@@ -45,7 +46,10 @@ document.addEventListener("DOMContentLoaded", () => {
     </ul>
 </div>
 <ul id="toolbar">
-    <li class="active">Toolbar #1</li>
+    <li class="active">
+        <div id="formula-error"></div>
+        <div id="formula"></div>
+    </li>
     <li>Toolbar #2</li>
     <li>Toolbar #3</li>
     <li>Toolbar #4</li>
@@ -53,14 +57,13 @@ document.addEventListener("DOMContentLoaded", () => {
 <div id="main">
     <div id="container">
         <table id="table"></table>
-        <div class="add-cells material-icons" id="add-rows"></div>
-        <div class="add-cells material-icons" id="add-columns"></div>
     </div>
 </div>
 <div id="overlay">
     <div class="drag-guide" id="drag-guide-vertical"></div>
     <div class="drag-guide" id="drag-guide-horizontal"></div>
 </div>
+<div id="hidden"></div>
 
 </body>
 

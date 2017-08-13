@@ -110,6 +110,45 @@ ul, ol {
 #toolbar > li.active {
   display: block; }
 
+#formula {
+  font-family: Cousine, Consolas, monospace;
+  height: 28px;
+  margin: 6px 10px;
+  box-sizing: border-box;
+  padding: 0 2px;
+  border-bottom: 1px solid #DDD;
+  font-size: 0.95em;
+  line-height: 27px;
+  color: #424242;
+  letter-spacing: 0.03em;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: border-bottom-color 0.135s ease; }
+
+#formula[contenteditable="true"] {
+  border-bottom-color: #CCC;
+  cursor: text; }
+
+#formula[contenteditable="true"]:focus {
+  border-bottom-color: rgba(15, 157, 88, 0.75); }
+
+#formula-error {
+  float: right;
+  height: 28px;
+  margin: 0 15px;
+  font-size: 0.875em;
+  color: #D33D2C;
+  text-shadow: 0 0 0 #D33D2C;
+  line-height: 28px;
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 50%;
+  transition: max-width 0.4s ease, margin 0.4s ease; }
+
+#formula-error:empty {
+  margin: 0;
+  max-width: 0; }
+
 #main {
   position: absolute;
   top: 126px;
@@ -138,7 +177,8 @@ ul, ol {
     box-sizing: border-box;
     font-size: 14px;
     color: #1F1F1F;
-    font-weight: 400; }
+    font-weight: 400;
+    white-space: nowrap; }
   #table td.column-header, #table td.row-header {
     position: relative;
     background: #F3F3F3;
@@ -177,6 +217,21 @@ ul, ol {
     border-bottom: 2px solid #4285F4 !important; }
   #table td.selection-border-left {
     border-left: 2px solid #4285F4 !important; }
+  #table td.error {
+    background-image: url(../assets/images/error.png);
+    background-size: 24px 24px;
+    font-weight: 600 !important;
+    color: #C53929 !important;
+    text-align: center !important; }
+  #table td.error::after {
+    content: "ERROR"; }
+
+#hidden {
+  position: fixed;
+  top: -99px;
+  font-size: 14px;
+  font-weight: 400;
+  white-space: nowrap; }
 
 #overlay {
   position: absolute;

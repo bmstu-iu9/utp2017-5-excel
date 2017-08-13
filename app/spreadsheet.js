@@ -127,6 +127,20 @@ const Spreadsheet = class extends EventManager {
     }
 
     /**
+     * Gets string representation of a formula in a cell
+     * @param {int} i Row index
+     * @param {int} j Column index
+     * @returns {string} Formula
+     */
+    getFormula(i, j) {
+
+
+
+        return "";
+
+    }
+
+    /**
      * Puts a formula into a cell and evaluates it
      * @param {int} i Row index
      * @param {int} j Column index
@@ -152,7 +166,22 @@ Spreadsheet.Event = Object.freeze({
      * @param {int} Column index
      * @param {*} Cell value
      */
-    CELL_VALUE_UPDATED: Symbol("cell_value_updated")
+    CELL_VALUE_UPDATED: Symbol("cell_value_updated"),
+
+    /**
+     * When formula in the cell is updated
+     * @param {int} Row index
+     * @param {int} Column index
+     * @param {string} Formula
+     */
+    CELL_FORMULA_UPDATED: Symbol("cell_formula_updated"),
+
+    /**
+     * When it is detected that cell is a part or a circular dependency
+     * @param {int} Row index
+     * @param {int} Column index
+     */
+    CELL_CIRCULAR_DEPENDENCY_DETECTED: Symbol("cell_circular_dependency_detected"),
 
 });
 
