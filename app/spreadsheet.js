@@ -570,7 +570,7 @@ Spreadsheet._Token = class {
          * @type {Spreadsheet._Position} Start position of current token
          */
         this.start = cur;
-        while (cur.getCharCode() !== -5 && String.fromCodePoint(cur.getCharCode()) === ' ') {
+        while (this.start.getCharCode() !== -5 && String.fromCodePoint(this.start.getCharCode()) === ' ') {
             this.start = this.start.skip();
         }
         /**
@@ -608,12 +608,9 @@ Spreadsheet._Token = class {
                 this.tag = Spreadsheet._Token.Tag.EQUALS;
                 break;
             case '\"':
-                while (this.follow.getCharCode() !== -5
-                && !(String.fromCodePoint(this.follow.getCharCode()) !== "\\"
-                    && String.fromCodePoint(this.follow.skip().getCharCode()) === "\"")) {
+                while (this.follow.getCharCode() !== -5 && String.fromCodePoint(this.follow.getCharCode()) !== "\"") {
                     this.follow = this.follow.skip();
                 }
-                this.follow = this.follow.skip();
                 this.follow = this.follow.skip();
                 this.tag = Spreadsheet._Token.Tag.STRING;
                 break;
@@ -648,6 +645,10 @@ Spreadsheet._Token = class {
                     }
                 } else if(this.start.satisfies(/[0-9]/i)) {
                     this.follow = this.follow.skipWhile(/[0-9]/i);
+                    if (this.follow.satisfies(/[.]/i)) {
+                        this.follow = this.follow.skip();
+                        this.follow = this.follow.skipWhile(/[0-9]/i);
+                    }
                     if(this.follow.satisfies(/[a-zA-Z]/i)) {
                         throw new Spreadsheet.FormulaError("delimiter expected", this.start.index);
                     }
@@ -880,7 +881,7 @@ Spreadsheet._Parser = class {
             console.log("< Factor> :== \"(\" <Expression> \")\"");
             this.token = this.token.next();
             this.parseExpression();
-            this.expect(Spreadsheet._Token.Tag.PARENTHESIS_OPENING);
+            this.expect(Spreadsheet._Token.Tag.PARENTHESIS_CLOSING);
         } else if (tag === Spreadsheet._Token.Tag.MINUS) {
             console.log("< Factor> :== \"-\" <Factor>");
             this.token = this.token.next();
@@ -907,6 +908,7 @@ Spreadsheet._Parser = class {
         //<Call> :== "(" <Arguments> ")" | ε
         if (this.token.tag === Spreadsheet._Token.Tag.PARENTHESIS_OPENING) {
             console.log("< Call> :== \"(\" <Arguments> \")\"");
+            this.token = this.token.next();
             this.parseArguments();
             this.expect(Spreadsheet._Token.Tag.PARENTHESIS_CLOSING);
         } else {
