@@ -269,9 +269,9 @@ Spreadsheet._Function = Object.freeze({
      * @returns {boolean}
      * @function
      */
-    NOT(value) { 
+    NOT(value) {
         if (arguments.length !== 1) throw new QuantityOfArgumentsError(this.position);
-        if (typeof value === "boolean") return !value; 
+        if (typeof value === "boolean") return !value;
         throw new ArgumentTypeError(this.position);
     },
 
@@ -317,9 +317,9 @@ Spreadsheet._Function = Object.freeze({
      * @returns {number}
      * @function
      */
-    NUMBER(value) { 
+    NUMBER(value) {
         if (arguments.length !== 1) throw new QuantityOfArgumentsError(this.position);
-        if (!isNaN(value)) return +value; 
+        if (!isNaN(value)) return +value;
         throw new ArgumentTypeError(this.position);
     },
 
@@ -482,7 +482,7 @@ Spreadsheet._Function = Object.freeze({
         if (typeof a !== typeof b || typeof a === "boolean") throw new ArgumentTypeError(this.position);
         return a >= b;
     }
-    
+
 });
 
 
@@ -493,46 +493,54 @@ Spreadsheet._Function = Object.freeze({
 Spreadsheet._CellGraph = class {
 
     /**
-    * @constructor
-    */
+     * @constructor
+     */
     constructor() {
+        /**
+         * @type {Spreadsheet._CellGraph.Vertex[]}
+         */
         this.vertices = [];
     }
     /**
-    * Adds a new vertex;
-    * @param {Vertex}
-    * @method
-    */
+     * Adds a new vertex;
+     * @param {Spreadsheet._CellGraph.Vertex} vertex
+     * @method
+     */
     addVertex(vertex) {
         this.vertices.push(vertex);
     }
     /**
-    * Adds a new edge;
-    * @param {Vertex}
-    * @param {Vertex}
-    * @method
-    */
+     * Adds a new edge;
+     * @param {Spreadsheet._CellGraph.Vertex} vertex1
+     * @param {Spreadsheet._CellGraph.Vertex} vertex2
+     * @method
+     */
     addEdge(vertex1, vertex2) {
         vertex1.edges.push(vertex2);
     }
     /**
-    * Finds all the vertices that are in cycle with the "vertex" in @param;
-    * @param {Vertex}
-    * @method
-    */
+     * Finds all the vertices that are in cycle with the "vertex" in @param;
+     * @param {Spreadsheet._CellGraph.Vertex} vertex
+     * @method
+     */
     findCycleFrom(vertex) {
         vertex.ifCyclic(vertex);
-        this.vertices.forEach (v => {
+        this.vertices.forEach(v => {
             v._color = 0;
-            v._parent = null; 
+            v._parent = null;
         });
         if (vertex.cycle.length === 0) return null;
         let ret = vertex.cycle;
         vertex.cycle = [];
         return ret;
     }
-    
-    detachVertex(vertex) {у
+
+    /**
+     * Deletes all the edges to the "vertex";
+     * @param {Spreadsheet._CellGraph.Vertex} vertex
+     * @method
+     */
+    detachVertex(vertex) {
         this.vertices.forEach(v => {
             let arr = [];
             v.edges.forEach(to => {
@@ -544,37 +552,49 @@ Spreadsheet._CellGraph = class {
 };
 
 Spreadsheet._CellGraph.Vertex = class {
-    
+
     /**
-    * @constructor
-    * @param cell row
-    * @param cell column
-    */
+     * @constructor
+     * @param {int} row
+     * @param {int} column
+     */
     constructor(row, column) {
+        /**
+         * @type {int}
+         */
         this.row = row;
+        /**
+         * @type {int}
+         */
         this.column = column;
+        /**
+         * @type {Spreadsheet._CellGraph.Vertex[]}
+         */
         this.edges = [];
         /**
-        * color, used in ifCyclic
-        * @private
-        */
+         * @private
+         * @type {int} color, used in ifCyclic
+         */
         this._color = 0;
         /**
-        * parent, used in addAll for the search of the vertices in cycle
-        * @private
-        */
+         * @private
+         * @type {Spreadsheet._CellGraph.Vertex} used in addAll for the search of the vertices in cycle;
+         */
         this._parent = null;
+        /**
+         * @type {Spreadsheet._CellGraph.Vertex[]}
+         */
         this.cycle = [];
     }
-    
+
     /**
-    * Finds a cycle and triggers addAll();
-    * @param {Vertex}
-    * @method
-    */
+     * Finds a cycle and triggers addAll();
+     * @param {Spreadsheet._CellGraph.Vertex} current
+     * @method
+     */
     ifCyclic(current)  {
-        
-        current._color = 1;  
+
+        current._color = 1;
         current.edges.forEach(to => {
             if (to._color === 0) {
                 to._parent = current;
@@ -582,17 +602,16 @@ Spreadsheet._CellGraph.Vertex = class {
             }
             else if (to === this) {
                 this._parent = current;
-                   this.addAll();
+                this.addAll();
             }
         });
         current._color = 2;
     }
 
     /**
-    * Adds the vertices that are in cycle with "this";
-    * @param {Vertex}
-    * @method
-    */
+     * Adds the vertices that are in cycle with "this";
+     * @method
+     */
     addAll() {
         let current = this._parent;
         while (current !== this) {
@@ -601,58 +620,6 @@ Spreadsheet._CellGraph.Vertex = class {
         }
     }
 };
-
-
-
-
-/*let v1 = new Spreadsheet._CellGraph.Vertex(1, 1, null);
-let v2 = new Spreadsheet._CellGraph.Vertex(1, 2, null);
-let v3 = new Spreadsheet._CellGraph.Vertex(1, 3, null);
-let v4 = new Spreadsheet._CellGraph.Vertex(1, 4, null);
-let v5 = new Spreadsheet._CellGraph.Vertex(1, 5, null);
-let v6 = new Spreadsheet._CellGraph.Vertex(1, 6, null);
-
-let a1 = [];
-a1.push(v2);
-a1.push(v6);
-v1.edges = a1;
-
-let a2 = [];
-a2.push(v1);
-a2.push(v1);
-a2.push(v3);
-v2.edges = a2;
-
-
-let a3 = [];
-a3.push(v4);
-v3.edges = a3;
-
-let a4 = [];
-a4.push(v5);
-v4.edges = a4;
-
-let a5 = [];
-a5.push(v2);
-a5.push(v1);
-v5.edges = a5;
-
-let arr = [];
-arr.push(v1);
-arr.push(v2);
-arr.push(v3);
-arr.push(v4);
-arr.push(v5);
-arr.push(v6);
-
-
-let g = new Spreadsheet._CellGraph(arr);
-let array = g.findCycleFrom(v1);
-
-for (let i = 0; i < array.length; i++) {
-    alert(array[i].column)
-}*/
-
 
 
 
