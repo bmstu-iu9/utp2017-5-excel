@@ -603,7 +603,7 @@ Spreadsheet._Token = class {
                 this.tag = Spreadsheet._Token.Tag.COMMA;
                 break;
             case '=':
-                this.tag = Spreadsheet._Token.Tag.EQUAL;
+                this.tag = Spreadsheet._Token.Tag.EQUALS;
                 break;
             case '\"':
                 while (this.follow.getCharCode() !== -5
@@ -618,17 +618,17 @@ Spreadsheet._Token = class {
             case '<':
                 if (this.follow.getCharCode() !== -5 && String.fromCodePoint(this.follow.getCharCode()) === '=') {
                     this.follow = this.follow.skip();
-                    this.tag = Spreadsheet._Token.Tag.SMALLER_OR_EQUAL;
+                    this.tag = Spreadsheet._Token.Tag.LESS_OR_EQUALS;
                 } else {
-                    this.tag = Spreadsheet._Token.Tag.SMALLER;
+                    this.tag = Spreadsheet._Token.Tag.LESS;
                 }
                 break;
             case '>':
                 if (this.follow.getCharCode() !== -5 && String.fromCodePoint(this.follow.getCharCode()) === '=') {
                     this.follow = this.follow.skip();
-                    this.tag = Spreadsheet._Token.Tag.BIGGER_OR_EQUAL;
+                    this.tag = Spreadsheet._Token.Tag.GREATER_OR_EQUALS;
                 } else {
-                    this.tag = Spreadsheet._Token.Tag.BIGGER;
+                    this.tag = Spreadsheet._Token.Tag.GREATER;
                 }
                 break;
             default:
@@ -651,14 +651,14 @@ Spreadsheet._Token = class {
                     }
                     this.tag = Spreadsheet._Token.Tag.NUMBER;
                 } else {
-                    throw new Spreadsheet.FormulaError("invalid character", this.start.index);
+                    throw new Spreadsheet.FormulaError(`Unexpected ${this.start.tag}`, this.start.index);
                 }
         }
     }
 
     /**
      * Check equality of current token and passed parameter
-     * @param {Spreadsheet._Token.Tag} t
+     * @param {String} t
      * @returns {boolean} equality of tokens
      */
     matches(t) {
@@ -680,24 +680,24 @@ Spreadsheet._Token = class {
  * @readonly
  */
 Spreadsheet._Token.Tag = Object.freeze({
-    SMALLER_OR_EQUAL: Symbol("SMALLER_OR_EQUAL"),
-    BIGGER_OR_EQUAL: Symbol("BIGGER_OR_EQUAL"),
-    EQUAL: Symbol("EQUAL"),
-    SMALLER: Symbol("SMALLER"),
-    BIGGER: Symbol("BIGGER"),
-    STRING: Symbol("STRING"),
-    NUMBER: Symbol("NUMBER"),
-    IDENTIFIER: Symbol("IDENTIFIER"),
-    PLUS: Symbol("PLUS"),
-    MINUS: Symbol("MINUS"),
-    TIMES: Symbol("TIMES"),
-    DIVIDES: Symbol("DIVIDES"),
-    TRUE: Symbol("TRUE"),
-    FALSE: Symbol("FALSE"),
-    PARENTHESIS_OPENING: Symbol("PARENTHESIS_OPENING"),
-    PARENTHESIS_CLOSING: Symbol("PARENTHESIS_CLOSING"),
-    COMMA: Symbol("COMMA"),
-    END_OF_TEXT: Symbol("END_OF_TEXT")
+    LESS_OR_EQUALS: "'<='",
+    GREATER_OR_EQUALS: "'>='",
+    EQUALS: "'='",
+    LESS: "'<'",
+    GREATER: "'>'",
+    STRING: "string",
+    NUMBER: "number",
+    IDENTIFIER: "identifier",
+    PLUS: "'+'",
+    MINUS: "'-'",
+    TIMES: "'*'",
+    DIVIDES: "'/'",
+    TRUE: "TRUE",
+    FALSE: "FALSE",
+    PARENTHESIS_OPENING: "'('",
+    PARENTHESIS_CLOSING: "')'",
+    COMMA: "','",
+    END_OF_TEXT: "end of formula"
 });
 
 /**
@@ -719,12 +719,12 @@ Spreadsheet._Parser = class {
 
     /**
      * Check equality of current token tag and parameter token tag
-     * @param {Spreadsheet._Token.Tag} tag
+     * @param {String} tag
      * @throws {Spreadsheet.FormulaError} if unexpected token occurs
      */
     expect(tag) {
         if(!this.token.matches(tag)) {
-            throw new Spreadsheet.FormulaError("unexpected token", this.token.start.index);
+            throw new Spreadsheet.FormulaError(`Unexpected ${tag}`, this.token.start.index);
         }
         this.token = this.token.next();
     }
@@ -769,23 +769,23 @@ Spreadsheet._Parser = class {
     parseComparisonOperator() {
         //<ComparisonOperator> :== "=" | "<" | ">" | "<=" | ">="
         switch (this.token.tag) {
-            case Spreadsheet._Token.Tag.EQUAL:
+            case Spreadsheet._Token.Tag.EQUALS:
                 console.log("< ComparisonOperator> :== \"=\"");
                 this.token = this.token.next();
                 return true;
-            case Spreadsheet._Token.Tag.SMALLER_OR_EQUAL:
+            case Spreadsheet._Token.Tag.LESS_OR_EQUALS:
                 console.log("< ComparisonOperator> :== \"<=\"");
                 this.token = this.token.next();
                 return true;
-            case Spreadsheet._Token.Tag.SMALLER:
+            case Spreadsheet._Token.Tag.LESS:
                 console.log("< ComparisonOperator> :== \"<\"");
                 this.token = this.token.next();
                 return true;
-            case Spreadsheet._Token.Tag.BIGGER_OR_EQUAL:
+            case Spreadsheet._Token.Tag.GREATER_OR_EQUALS:
                 console.log("< ComparisonOperator> :== \">=\"");
                 this.token = this.token.next();
                 return true;
-            case Spreadsheet._Token.Tag.BIGGER:
+            case Spreadsheet._Token.Tag.GREATER:
                 console.log("< ComparisonOperator> :== \">\"");
                 this.token = this.token.next();
                 return true;
@@ -884,7 +884,7 @@ Spreadsheet._Parser = class {
             this.token = this.token.next();
             this.parseFactor();
         } else {
-            throw new Spreadsheet.FormulaError("unexpected token", this.token.index);
+            throw new Spreadsheet.FormulaError(`Unexpected ${this.token.tag}`, this.token.start.index);
         }
     }
 
