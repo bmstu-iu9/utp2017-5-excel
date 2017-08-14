@@ -492,68 +492,118 @@ Spreadsheet._Function = Object.freeze({
 
 Spreadsheet._CellGraph = class {
 
-    constructor(vertices) {
-        this.vertices = vertices;
+    /**
+    * @constructor
+    */
+    constructor() {
+        this.vertices = [];
     }
+    /**
+    * Adds a new vertex;
+    * @param {Vertex}
+    * @method
+    */
     addVertex(vertex) {
         this.vertices.push(vertex);
     }
+    /**
+    * Adds a new edge;
+    * @param {Vertex}
+    * @param {Vertex}
+    * @method
+    */
     addEdge(vertex1, vertex2) {
         vertex1.edges.push(vertex2);
     }
+    /**
+    * Finds all the vertices that are in cycle with the "vertex" in @param;
+    * @param {Vertex}
+    * @method
+    */
     findCycleFrom(vertex) {
         vertex.ifCyclic(vertex);
+        this.vertices.forEach (v => {
+            v._color = 0;
+            v._parent = null; 
+        });
         if (vertex.cycle.length === 0) return null;
-        else return vertex.cycle;
-    }
-}
-
-Spreadsheet._CellGraph.Vertex = class {
-    constructor(row, column, edges) {
-        this.row = row;
-        this.column = column;
-        this.edges = edges;
-        this.color = 0;
-        this.parent = null;
-        this.cycle = [];
-    }
-
-    ifCyclic(current)  {
-        
-        current.color = 1;  
-        if (current.edges !== null) {
-            current.edges.forEach(to => {
-                if (to.color === 0) {
-                    to.parent = current;
-                    this.ifCyclic(to);
-                }
-                else if (to === this) {
-                    this.parent = current;
-                    this.addAll();
-                }
-            });
-        }
-        current.color = 2;
-    }
-
-    addAll() {
-        let current = this.parent;
-        while (current !== this) {
-            if (this.findEdge(current) === -1) this.cycle.push(current);
-            current = current.parent;
-        }
+        let ret = vertex.cycle;
+        vertex.cycle = [];
+        return ret;
     }
     
-    findEdge(vertex) {
-        const size = this.cycle.length;
-        for (let i = 0; i < size; i++) {
-            if (this.cycle[i] === vertex) {
-                return i;
-            }
-        }
-        return -1;
+    detachVertex(vertex) {у
+        this.vertices.forEach(v => {
+            let arr = [];
+            v.edges.forEach(to => {
+                if (to !== vertex) arr.push(to);
+            });
+            v.edges = arr;
+        });
     }
-}
+};
+
+Spreadsheet._CellGraph.Vertex = class {
+    
+    /**
+    * @constructor
+    * @param cell row
+    * @param cell column
+    */
+    constructor(row, column) {
+        this.row = row;
+        this.column = column;
+        this.edges = [];
+        /**
+        * color, used in ifCyclic
+        * @private
+        */
+        this._color = 0;
+        /**
+        * parent, used in addAll for the search of the vertices in cycle
+        * @private
+        */
+        this._parent = null;
+        this.cycle = [];
+    }
+    
+    /**
+    * Finds a cycle and triggers addAll();
+    * @param {Vertex}
+    * @method
+    */
+    ifCyclic(current)  {
+        
+        current._color = 1;  
+        current.edges.forEach(to => {
+            if (to._color === 0) {
+                to._parent = current;
+                this.ifCyclic(to);
+            }
+            else if (to === this) {
+                this._parent = current;
+                   this.addAll();
+            }
+        });
+        current._color = 2;
+    }
+
+    /**
+    * Adds the vertices that are in cycle with "this";
+    * @param {Vertex}
+    * @method
+    */
+    addAll() {
+        let current = this._parent;
+        while (current !== this) {
+            if (this.cycle.indexOf(current) === -1) this.cycle.push(current);
+            current = current._parent;
+        }
+    }
+};
+
+
+
 
 /*let v1 = new Spreadsheet._CellGraph.Vertex(1, 1, null);
 let v2 = new Spreadsheet._CellGraph.Vertex(1, 2, null);
@@ -599,8 +649,8 @@ arr.push(v6);
 let g = new Spreadsheet._CellGraph(arr);
 let array = g.findCycleFrom(v1);
 
-for (let i = 0; i < v1.cycle.length; i++) {
-    alert(v1.cycle[i].column)
+for (let i = 0; i < array.length; i++) {
+    alert(array[i].column)
 }*/
 
 
