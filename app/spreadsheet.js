@@ -485,10 +485,466 @@ Spreadsheet._Function = Object.freeze({
     
 });
 
+/**
+ * @class represents position of token in formula
+ * @private
+ */
+Spreadsheet._Position = class {
 
+    /**
+     * @constructor
+     * @param {string} formula Formula
+     * @param {int} index Index of current character in formula
+     */
+    constructor(formula, index) {
+        /**
+         * @type {String} formula
+         */
+        this.formula = formula;
+        /**
+         * @type {int} start index of token in text
+         */
+        this.index = index;
+    }
 
+    /**
+     * Gets code of character
+     * @returns {int} Code of character at position or -5 if reached end of text
+     */
+    getCharCode() {
+        return this.index < this.formula.length ? this.formula.codePointAt(this.index) : -5;
+    }
 
+    /**
+     * Check if character match RegExp condition
+     * @param {RegExp} p
+     * @returns {boolean} character satisfaction to condition
+     */
+    satisfies(p) {
+        let code = this.getCharCode();
+        if (code !== -5) {
+            return String.fromCodePoint(code).match(p) !== null
+        }
+        return false
+    }
 
+    /**
+     * Return next position
+     * @returns {Spreadsheet._Position} Position of next character
+     */
+    skip() {
+        const code = this.getCharCode();
+        if (code === -5) {
+            return this;
+        }
+        return new Spreadsheet._Position(this.formula, this.index + (code > 0xFFFF ? 2 : 1));
+    }
+
+    /**
+     * Skip characters as long as condition
+     * @param {RegExp} p
+     * @returns {Spreadsheet._Position} Position of next token
+     */
+    skipWhile(p) {
+        let pos = this;
+        while(pos.satisfies(p)) pos = pos.skip();
+        return pos;
+    }
+};
+
+/**
+ * @class represents token of formula
+ * @private
+ */
+Spreadsheet._Token = class {
+
+    /**
+     * @constructor
+     * @param {Spreadsheet._Position} cur current position
+     * @throws {Spreadsheet.FormulaError} if unexpected token occurs
+     */
+    constructor(cur) {
+        /**
+         * @type {Spreadsheet._Position} Start position of current token
+         */
+        this.start = cur;
+        while (cur.getCharCode() !== -5 && String.fromCodePoint(cur.getCharCode()) === ' ') {
+            this.start = this.start.skip();
+        }
+        /**
+         * @type {Spreadsheet._Position} End position of current token
+         */
+        this.follow = this.start.skip();
+        let code = this.start.getCharCode();
+        if (code === -5) {
+            this.tag = Spreadsheet._Token.Tag.END_OF_TEXT;
+            return;
+        }
+        switch(String.fromCodePoint(code)) {
+            case '+':
+                this.tag = Spreadsheet._Token.Tag.PLUS;
+                break;
+            case '-':
+                this.tag = Spreadsheet._Token.Tag.MINUS;
+                break;
+            case '*':
+                this.tag = Spreadsheet._Token.Tag.TIMES;
+                break;
+            case '/':
+                this.tag = Spreadsheet._Token.Tag.DIVIDES;
+                break;
+            case '(':
+                this.tag = Spreadsheet._Token.Tag.PARENTHESIS_OPENING;
+                break;
+            case ')':
+                this.tag = Spreadsheet._Token.Tag.PARENTHESIS_CLOSING;
+                break;
+            case ',':
+                this.tag = Spreadsheet._Token.Tag.COMMA;
+                break;
+            case '=':
+                this.tag = Spreadsheet._Token.Tag.EQUAL;
+                break;
+            case '\"':
+                while (this.follow.getCharCode() !== -5
+                && !(String.fromCodePoint(this.follow.getCharCode()) !== "\\"
+                    && String.fromCodePoint(this.follow.skip().getCharCode()) === "\"")) {
+                    this.follow = this.follow.skip();
+                }
+                this.follow = this.follow.skip();
+                this.follow = this.follow.skip();
+                this.tag = Spreadsheet._Token.Tag.STRING;
+                break;
+            case '<':
+                if (this.follow.getCharCode() !== -5 && String.fromCodePoint(this.follow.getCharCode()) === '=') {
+                    this.follow = this.follow.skip();
+                    this.tag = Spreadsheet._Token.Tag.SMALLER_OR_EQUAL;
+                } else {
+                    this.tag = Spreadsheet._Token.Tag.SMALLER;
+                }
+                break;
+            case '>':
+                if (this.follow.getCharCode() !== -5 && String.fromCodePoint(this.follow.getCharCode()) === '=') {
+                    this.follow = this.follow.skip();
+                    this.tag = Spreadsheet._Token.Tag.BIGGER_OR_EQUAL;
+                } else {
+                    this.tag = Spreadsheet._Token.Tag.BIGGER;
+                }
+                break;
+            default:
+                if(this.start.satisfies(/[a-zA-Z]/i)) {
+                    this.follow = this.follow.skipWhile(/[0-9a-zA-Z]/i);
+                    let startIndex = this.start.index;
+                    let endIndex = this.follow.index;
+                    let identifier = this.start.formula.substr(startIndex, endIndex-startIndex);
+                    if (identifier === 'TRUE') {
+                        this.tag = Spreadsheet._Token.Tag.TRUE
+                    } else if (identifier === 'FALSE') {
+                        this.tag = Spreadsheet._Token.Tag.FALSE
+                    } else {
+                        this.tag = Spreadsheet._Token.Tag.IDENTIFIER;
+                    }
+                } else if(this.start.satisfies(/[0-9]/i)) {
+                    this.follow = this.follow.skipWhile(/[0-9]/i);
+                    if(this.follow.satisfies(/[a-zA-Z]/i)) {
+                        throw new Spreadsheet.FormulaError("delimiter expected", this.start.index);
+                    }
+                    this.tag = Spreadsheet._Token.Tag.NUMBER;
+                } else {
+                    throw new Spreadsheet.FormulaError("invalid character", this.start.index);
+                }
+        }
+    }
+
+    /**
+     * Check equality of current token and passed parameter
+     * @param {Spreadsheet._Token.Tag} t
+     * @returns {boolean} equality of tokens
+     */
+    matches(t) {
+        return t === this.tag
+    }
+
+    /**
+     * Returns next token
+     * @returns {Spreadsheet._Token} next token
+     */
+    next() {
+        return new Spreadsheet._Token(this.follow);
+    }
+};
+
+/**
+ * Enum for token types
+ * @enum
+ * @readonly
+ */
+Spreadsheet._Token.Tag = Object.freeze({
+    SMALLER_OR_EQUAL: Symbol("SMALLER_OR_EQUAL"),
+    BIGGER_OR_EQUAL: Symbol("BIGGER_OR_EQUAL"),
+    EQUAL: Symbol("EQUAL"),
+    SMALLER: Symbol("SMALLER"),
+    BIGGER: Symbol("BIGGER"),
+    STRING: Symbol("STRING"),
+    NUMBER: Symbol("NUMBER"),
+    IDENTIFIER: Symbol("IDENTIFIER"),
+    PLUS: Symbol("PLUS"),
+    MINUS: Symbol("MINUS"),
+    TIMES: Symbol("TIMES"),
+    DIVIDES: Symbol("DIVIDES"),
+    TRUE: Symbol("TRUE"),
+    FALSE: Symbol("FALSE"),
+    PARENTHESIS_OPENING: Symbol("PARENTHESIS_OPENING"),
+    PARENTHESIS_CLOSING: Symbol("PARENTHESIS_CLOSING"),
+    COMMA: Symbol("COMMA"),
+    END_OF_TEXT: Symbol("END_OF_TEXT")
+});
+
+/**
+ * @class checks formula for grammar
+ * @private
+ */
+Spreadsheet._Parser = class {
+
+    /**
+     * @constructor
+     * @param {String} text Formula
+     */
+    constructor(text) {
+        /**
+         * @type {Spreadsheet._Token} Start position of current token
+         */
+        this.token = new Spreadsheet._Token(new Spreadsheet._Position(text, 0));
+    }
+
+    /**
+     * Check equality of current token tag and parameter token tag
+     * @param {Spreadsheet._Token.Tag} tag
+     * @throws {Spreadsheet.FormulaError} if unexpected token occurs
+     */
+    expect(tag) {
+        if(!this.token.matches(tag)) {
+            throw new Spreadsheet.FormulaError("unexpected token", this.token.start.index);
+        }
+        this.token = this.token.next();
+    }
+
+    /**
+     * Parses formula
+     */
+    parse() {
+        this.parseExpression();
+        this.expect(Spreadsheet._Token.Tag.END_OF_TEXT);
+    }
+
+    /**
+     * Parses Expression rule
+     */
+    parseExpression() {
+        // <Expression> :== <Compared> <ComparedRest>
+        console.log("< Expression> :== <Compared> <ComparedRest>");
+        this.parseCompared();
+        this.parseComparedRest();
+    }
+
+    /**
+     * Parses ComparedRest rule
+     */
+    parseComparedRest() {
+        //<ComparedRest> :== <ComparisonOperator> <Compared> <ComparedRest> | ε
+        if (this.parseComparisonOperator()) {
+            console.log("< ComparedRest> :== <ComparisonOperator> <Compared> <ComparedRest>");
+            this.parseCompared();
+            this.parseComparedRest()
+        } else {
+            console.log("< ComparedRest> :== ε");
+        }
+
+    }
+
+    /**
+     * Parses ComparisonOperator rule
+     * @returns {boolean} equality of current token and any of сomparison tokens
+     */
+    parseComparisonOperator() {
+        //<ComparisonOperator> :== "=" | "<" | ">" | "<=" | ">="
+        switch (this.token.tag) {
+            case Spreadsheet._Token.Tag.EQUAL:
+                console.log("< ComparisonOperator> :== \"=\"");
+                this.token = this.token.next();
+                return true;
+            case Spreadsheet._Token.Tag.SMALLER_OR_EQUAL:
+                console.log("< ComparisonOperator> :== \"<=\"");
+                this.token = this.token.next();
+                return true;
+            case Spreadsheet._Token.Tag.SMALLER:
+                console.log("< ComparisonOperator> :== \"<\"");
+                this.token = this.token.next();
+                return true;
+            case Spreadsheet._Token.Tag.BIGGER_OR_EQUAL:
+                console.log("< ComparisonOperator> :== \">=\"");
+                this.token = this.token.next();
+                return true;
+            case Spreadsheet._Token.Tag.BIGGER:
+                console.log("< ComparisonOperator> :== \">\"");
+                this.token = this.token.next();
+                return true;
+            default: return false;
+        }
+    }
+
+    /**
+     * Parses Compared rule
+     */
+    parseCompared() {
+        //<Compared> :== <Term> <Terms>
+        console.log("< Compared> :== <Term> <Terms>");
+        this.parseTerm();
+        this.parseTerms();
+    }
+
+    /**
+     * Parses Terms rule
+     */
+    parseTerms() {
+        //<Terms> :== "-" <Term> <Terms> | "+" <Term> <Terms> | ε
+        if (this.token.tag === Spreadsheet._Token.Tag.MINUS) {
+            console.log("< Terms> :== \"-\" <Term> <Terms>");
+            this.token = this.token.next();
+            this.parseTerm();
+            this.parseTerms();
+        } else if (this.token.tag === Spreadsheet._Token.Tag.PLUS) {
+            console.log("< Terms> :== \"+\" <Term> <Terms>");
+            this.token = this.token.next();
+            this.parseTerm();
+            this.parseTerms();
+        } else {
+            console.log("< Terms> :== ε");
+        }
+    }
+
+    /**
+     * Parses Term rule
+     */
+    parseTerm() {
+        //<Term> :== <Factor> <Factors>
+        console.log("< Term> :== <Factor> <Factors>");
+        this.parseFactor();
+        this.parseFactors();
+    }
+
+    /**
+     * Parses Factors rule
+     */
+    parseFactors() {
+        //<Factors> :== "*" <Factor> <Factors> | "/" <Factor> <Factors> | ε
+        if (this.token.tag === Spreadsheet._Token.Tag.TIMES) {
+            console.log("< Factors> :== \"*\" <Factor> <Factors>");
+            this.token = this.token.next();
+            this.parseFactor();
+            this.parseFactors();
+        } else if (this.token.tag === Spreadsheet._Token.Tag.DIVIDES) {
+            console.log("< Factors> :== \"/\" <Factor> <Factors>");
+            this.token = this.token.next();
+            this.parseFactor();
+            this.parseFactors();
+        } else {
+            console.log("< Factors> :== ε");
+        }
+    }
+
+    /**
+     * Parses Factor rule
+     */
+    parseFactor() {
+        //<Factor> :== NUMBER | STRING | "TRUE" | "FALSE" | <Identifiable> | "(" <Expression> ")" | "-" <Factor>
+        let tag = this.token.tag;
+        if (tag === Spreadsheet._Token.Tag.NUMBER) {
+            console.log("< Factor> :== NUMBER");
+            this.token = this.token.next();
+        } else if (tag === Spreadsheet._Token.Tag.STRING) {
+            console.log("< Factor> :== STRING");
+            this.token = this.token.next();
+        } else if (tag === Spreadsheet._Token.Tag.TRUE) {
+            console.log("< Factor> :== \"TRUE\"");
+            this.token = this.token.next();
+        } else if (tag === Spreadsheet._Token.Tag.FALSE) {
+            console.log("< Factor> :== \"FALSE\"");
+            this.token = this.token.next();
+        } else if (tag === Spreadsheet._Token.Tag.IDENTIFIER) {
+            console.log("< Factor> :== <Identifiable>");
+            this.parseIdentifiable();
+        } else if (tag === Spreadsheet._Token.Tag.PARENTHESIS_OPENING) {
+            console.log("< Factor> :== \"(\" <Expression> \")\"");
+            this.token = this.token.next();
+            this.parseExpression();
+            this.expect(Spreadsheet._Token.Tag.PARENTHESIS_OPENING);
+        } else if (tag === Spreadsheet._Token.Tag.MINUS) {
+            console.log("< Factor> :== \"-\" <Factor>");
+            this.token = this.token.next();
+            this.parseFactor();
+        } else {
+            throw new Spreadsheet.FormulaError("unexpected token", this.token.index);
+        }
+    }
+
+    /**
+     * Parses Identifiable rule
+     */
+    parseIdentifiable() {
+        //<Identifiable> :== IDENTIFIER <Call>
+        console.log("< Identifiable> :== IDENTIFIER <Call>");
+        this.expect(Spreadsheet._Token.Tag.IDENTIFIER);
+        this.parseCall();
+    }
+
+    /**
+     * Parses Call rule
+     */
+    parseCall() {
+        //<Call> :== "(" <Arguments> ")" | ε
+        if (this.token.tag === Spreadsheet._Token.Tag.PARENTHESIS_OPENING) {
+            console.log("< Call> :== \"(\" <Arguments> \")\"");
+            this.parseArguments();
+            this.expect(Spreadsheet._Token.Tag.PARENTHESIS_CLOSING);
+        } else {
+            console.log("< Call> :== ε");
+        }
+    }
+
+    /**
+     * Parses Arguments rule
+     */
+    parseArguments() {
+        //<Arguments> :== <Expression> <ArgumentsRest> | ε
+        let tag = this.token.tag;
+        if (tag === Spreadsheet._Token.Tag.NUMBER || tag === Spreadsheet._Token.Tag.STRING ||
+            tag === Spreadsheet._Token.Tag.TRUE || tag === Spreadsheet._Token.Tag.FALSE ||
+            tag === Spreadsheet._Token.Tag.IDENTIFIER || tag === Spreadsheet._Token.Tag.PARENTHESIS_OPENING ||
+            tag === Spreadsheet._Token.Tag.MINUS ) {
+            console.log("< Arguments> :== <Expression> <ArgumentsRest>");
+            this.parseExpression();
+            this.parseArgumentsRest();
+        } else {
+            console.log("< Arguments> :== ε");
+        }
+    }
+
+    /**
+     * Parses ArgumentsRest rule
+     */
+    parseArgumentsRest() {
+        //<ArgumentsRest> :== "," <Expression> <ArgumentsRest> | ε
+        if (this.token.tag === Spreadsheet._Token.Tag.COMMA) {
+            console.log("< ArgumentsRest> :== \",\" <Expression> <ArgumentsRest>");
+            this.token = this.token.next();
+            this.parseExpression();
+            this.parseArgumentsRest();
+        } else {
+            console.log("< ArgumentsRest> :== ε");
+        }
+    }
+};
 
 Spreadsheet._CellGraph = class {
 
