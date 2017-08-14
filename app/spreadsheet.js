@@ -500,7 +500,6 @@ Spreadsheet._CellGraph = class {
     }
     addEdge(vertex1, vertex2) {
         vertex1.edges.push(vertex2);
-        vertex2.edges.push(vertex1);
     }
     findCycleFrom(vertex) {
         vertex.ifCyclic(vertex);
