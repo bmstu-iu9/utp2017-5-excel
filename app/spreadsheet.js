@@ -100,28 +100,30 @@ const Spreadsheet = class extends EventManager {
      * @param {int} j New column index
      */
     _updateSize(i, j) {
-        let columns = this.cells.length;
-        let rows = this.cells.length > 0 ? this.cells[0].length : 0;
         if (i < 0 || j < 0) return;
-        if (i > columns) {
-            for (let index = columns - 1; index < i; index++) {
-                this.cells[index] = [new Spreadsheet._Cell()];
-            }
-        } else if (i < columns) {
-            for (let index = i; index < columns; index++) {
+        let rows = this.cells.length;
+        let columns = this.cells.length > 0 ? this.cells[0].length : 0;
+        if (i<rows) {
+            for (let index = i; index < rows; index++) {
                 this.cells.pop();
             }
-        }
-        if (j < rows) {
-            for (let indexI = 0; indexI < i; indexI++) {
-                for (let indexJ = 0; indexJ <= rows - this.cells[indexI].length; indexJ++) {
-                    this.cells[indexI].pop();
-                }
+        } else if (i>rows) {
+            for (let index = rows; index < i; index++) {
+                this.cells[index] = Array(columns).fill(new Spreadsheet._Cell());
             }
         }
-        for (let indexI = 0; indexI < i; indexI++) {
-            for (let indexJ = this.cells[indexI].length ; indexJ < j; indexJ++) {
-                this.cells[indexI][indexJ] = new Spreadsheet._Cell();
+
+        if (j<columns) {
+            for (let indexJ = 0; indexJ < i; indexJ++) {
+                for (let indexI = j; indexI < columns; indexI++) {
+                    this.cells[indexJ].pop();
+                }
+            }
+        } else if (j>columns) {
+            for (let indexJ = 0; indexJ < i; indexJ++) {
+                for (let indexI = columns; indexI < j; indexI++) {
+                    this.cells[indexJ][indexI] = new Spreadsheet._Cell();
+                }
             }
         }
     }
