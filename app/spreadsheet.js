@@ -1005,6 +1005,36 @@ Spreadsheet._CellGraph = class {
             v.edges = arr;
         });
     }
+    
+    /**
+    * Calls dfs and clears color data for every vertex
+    * @param {Spreadsheet._CellGraph.Vertex} vertex
+    * @param {function} callback
+    * @method
+    */
+    iterateFrom(vertex, callback) {
+        this.dfs(vertex, callback);
+        this.vertices.forEach(v => {
+            v._color = 0;
+        });
+    }
+    
+    /**
+    * Browses all the vertices and calls callback() from every vertex
+    * @param {Spreadsheet._CellGraph.Vertex} current
+    * @param {function} callback
+    * @method
+    */
+    dfs(current, callback) {
+        current._color = 1;
+        callback(current);
+        current.edges.forEach(to => {
+            if (to._color === 0) {
+                this.dfs(to, callback);
+            }
+        });
+        current._color = 2;
+    }
 };
 
 Spreadsheet._CellGraph.Vertex = class {
