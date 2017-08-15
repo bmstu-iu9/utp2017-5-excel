@@ -250,7 +250,7 @@ Spreadsheet._Cell = class {
          */
         this.value = undefined;
         /**
-         * @type {Spreadsheet._Expression} Parsed formula
+         * @type {number|string|boolean|Spreadsheet._Expression|Spreadsheet.CellReference} Parsed formula
          */
         this.expression = undefined;
     }
