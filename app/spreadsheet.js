@@ -100,28 +100,30 @@ const Spreadsheet = class extends EventManager {
      * @param {int} j New column index
      */
     _updateSize(i, j) {
-        let columns = this.cells.length;
-        let rows = this.cells.length > 0 ? this.cells[0].length : 0;
         if (i < 0 || j < 0) return;
-        if (i > columns) {
-            for (let index = columns - 1; index < i; index++) {
-                this.cells[index] = [new Spreadsheet._Cell()];
-            }
-        } else if (i < columns) {
-            for (let index = i; index < columns; index++) {
+        let rows = this.cells.length;
+        let columns = this.cells.length > 0 ? this.cells[0].length : 0;
+        if (i<rows) {
+            for (let index = i; index < rows; index++) {
                 this.cells.pop();
             }
-        }
-        if (j < rows) {
-            for (let indexI = 0; indexI < i; indexI++) {
-                for (let indexJ = 0; indexJ <= rows - this.cells[indexI].length; indexJ++) {
-                    this.cells[indexI].pop();
-                }
+        } else if (i>rows) {
+            for (let index = rows; index < i; index++) {
+                this.cells[index] = Array(columns).fill(new Spreadsheet._Cell());
             }
         }
-        for (let indexI = 0; indexI < i; indexI++) {
-            for (let indexJ = this.cells[indexI].length ; indexJ < j; indexJ++) {
-                this.cells[indexI][indexJ] = new Spreadsheet._Cell();
+
+        if (j<columns) {
+            for (let indexJ = 0; indexJ < i; indexJ++) {
+                for (let indexI = j; indexI < columns; indexI++) {
+                    this.cells[indexJ].pop();
+                }
+            }
+        } else if (j>columns) {
+            for (let indexJ = 0; indexJ < i; indexJ++) {
+                for (let indexI = columns; indexI < j; indexI++) {
+                    this.cells[indexJ][indexI] = new Spreadsheet._Cell();
+                }
             }
         }
     }
@@ -568,7 +570,7 @@ Spreadsheet._Token = class {
          * @type {Spreadsheet._Position} Start position of current token
          */
         this.start = cur;
-        while (cur.getCharCode() !== -5 && String.fromCodePoint(cur.getCharCode()) === ' ') {
+        while (this.start.getCharCode() !== -5 && String.fromCodePoint(this.start.getCharCode()) === ' ') {
             this.start = this.start.skip();
         }
         /**
@@ -603,32 +605,29 @@ Spreadsheet._Token = class {
                 this.tag = Spreadsheet._Token.Tag.COMMA;
                 break;
             case '=':
-                this.tag = Spreadsheet._Token.Tag.EQUAL;
+                this.tag = Spreadsheet._Token.Tag.EQUALS;
                 break;
             case '\"':
-                while (this.follow.getCharCode() !== -5
-                && !(String.fromCodePoint(this.follow.getCharCode()) !== "\\"
-                    && String.fromCodePoint(this.follow.skip().getCharCode()) === "\"")) {
+                while (this.follow.getCharCode() !== -5 && String.fromCodePoint(this.follow.getCharCode()) !== "\"") {
                     this.follow = this.follow.skip();
                 }
-                this.follow = this.follow.skip();
                 this.follow = this.follow.skip();
                 this.tag = Spreadsheet._Token.Tag.STRING;
                 break;
             case '<':
                 if (this.follow.getCharCode() !== -5 && String.fromCodePoint(this.follow.getCharCode()) === '=') {
                     this.follow = this.follow.skip();
-                    this.tag = Spreadsheet._Token.Tag.SMALLER_OR_EQUAL;
+                    this.tag = Spreadsheet._Token.Tag.LESS_OR_EQUALS;
                 } else {
-                    this.tag = Spreadsheet._Token.Tag.SMALLER;
+                    this.tag = Spreadsheet._Token.Tag.LESS;
                 }
                 break;
             case '>':
                 if (this.follow.getCharCode() !== -5 && String.fromCodePoint(this.follow.getCharCode()) === '=') {
                     this.follow = this.follow.skip();
-                    this.tag = Spreadsheet._Token.Tag.BIGGER_OR_EQUAL;
+                    this.tag = Spreadsheet._Token.Tag.GREATER_OR_EQUALS;
                 } else {
-                    this.tag = Spreadsheet._Token.Tag.BIGGER;
+                    this.tag = Spreadsheet._Token.Tag.GREATER;
                 }
                 break;
             default:
@@ -646,19 +645,23 @@ Spreadsheet._Token = class {
                     }
                 } else if(this.start.satisfies(/[0-9]/i)) {
                     this.follow = this.follow.skipWhile(/[0-9]/i);
+                    if (this.follow.satisfies(/[.]/i)) {
+                        this.follow = this.follow.skip();
+                        this.follow = this.follow.skipWhile(/[0-9]/i);
+                    }
                     if(this.follow.satisfies(/[a-zA-Z]/i)) {
                         throw new Spreadsheet.FormulaError("delimiter expected", this.start.index);
                     }
                     this.tag = Spreadsheet._Token.Tag.NUMBER;
                 } else {
-                    throw new Spreadsheet.FormulaError("invalid character", this.start.index);
+                    throw new Spreadsheet.FormulaError(`Unexpected ${this.start.tag}`, this.start.index);
                 }
         }
     }
 
     /**
      * Check equality of current token and passed parameter
-     * @param {Spreadsheet._Token.Tag} t
+     * @param {String} t
      * @returns {boolean} equality of tokens
      */
     matches(t) {
@@ -680,24 +683,24 @@ Spreadsheet._Token = class {
  * @readonly
  */
 Spreadsheet._Token.Tag = Object.freeze({
-    SMALLER_OR_EQUAL: Symbol("SMALLER_OR_EQUAL"),
-    BIGGER_OR_EQUAL: Symbol("BIGGER_OR_EQUAL"),
-    EQUAL: Symbol("EQUAL"),
-    SMALLER: Symbol("SMALLER"),
-    BIGGER: Symbol("BIGGER"),
-    STRING: Symbol("STRING"),
-    NUMBER: Symbol("NUMBER"),
-    IDENTIFIER: Symbol("IDENTIFIER"),
-    PLUS: Symbol("PLUS"),
-    MINUS: Symbol("MINUS"),
-    TIMES: Symbol("TIMES"),
-    DIVIDES: Symbol("DIVIDES"),
-    TRUE: Symbol("TRUE"),
-    FALSE: Symbol("FALSE"),
-    PARENTHESIS_OPENING: Symbol("PARENTHESIS_OPENING"),
-    PARENTHESIS_CLOSING: Symbol("PARENTHESIS_CLOSING"),
-    COMMA: Symbol("COMMA"),
-    END_OF_TEXT: Symbol("END_OF_TEXT")
+    LESS_OR_EQUALS: "'<='",
+    GREATER_OR_EQUALS: "'>='",
+    EQUALS: "'='",
+    LESS: "'<'",
+    GREATER: "'>'",
+    STRING: "string",
+    NUMBER: "number",
+    IDENTIFIER: "identifier",
+    PLUS: "'+'",
+    MINUS: "'-'",
+    TIMES: "'*'",
+    DIVIDES: "'/'",
+    TRUE: "TRUE",
+    FALSE: "FALSE",
+    PARENTHESIS_OPENING: "'('",
+    PARENTHESIS_CLOSING: "')'",
+    COMMA: "','",
+    END_OF_TEXT: "end of formula"
 });
 
 /**
@@ -719,12 +722,12 @@ Spreadsheet._Parser = class {
 
     /**
      * Check equality of current token tag and parameter token tag
-     * @param {Spreadsheet._Token.Tag} tag
+     * @param {String} tag
      * @throws {Spreadsheet.FormulaError} if unexpected token occurs
      */
     expect(tag) {
         if(!this.token.matches(tag)) {
-            throw new Spreadsheet.FormulaError("unexpected token", this.token.start.index);
+            throw new Spreadsheet.FormulaError(`Unexpected ${tag}`, this.token.start.index);
         }
         this.token = this.token.next();
     }
@@ -769,23 +772,23 @@ Spreadsheet._Parser = class {
     parseComparisonOperator() {
         //<ComparisonOperator> :== "=" | "<" | ">" | "<=" | ">="
         switch (this.token.tag) {
-            case Spreadsheet._Token.Tag.EQUAL:
+            case Spreadsheet._Token.Tag.EQUALS:
                 console.log("< ComparisonOperator> :== \"=\"");
                 this.token = this.token.next();
                 return true;
-            case Spreadsheet._Token.Tag.SMALLER_OR_EQUAL:
+            case Spreadsheet._Token.Tag.LESS_OR_EQUALS:
                 console.log("< ComparisonOperator> :== \"<=\"");
                 this.token = this.token.next();
                 return true;
-            case Spreadsheet._Token.Tag.SMALLER:
+            case Spreadsheet._Token.Tag.LESS:
                 console.log("< ComparisonOperator> :== \"<\"");
                 this.token = this.token.next();
                 return true;
-            case Spreadsheet._Token.Tag.BIGGER_OR_EQUAL:
+            case Spreadsheet._Token.Tag.GREATER_OR_EQUALS:
                 console.log("< ComparisonOperator> :== \">=\"");
                 this.token = this.token.next();
                 return true;
-            case Spreadsheet._Token.Tag.BIGGER:
+            case Spreadsheet._Token.Tag.GREATER:
                 console.log("< ComparisonOperator> :== \">\"");
                 this.token = this.token.next();
                 return true;
@@ -878,13 +881,13 @@ Spreadsheet._Parser = class {
             console.log("< Factor> :== \"(\" <Expression> \")\"");
             this.token = this.token.next();
             this.parseExpression();
-            this.expect(Spreadsheet._Token.Tag.PARENTHESIS_OPENING);
+            this.expect(Spreadsheet._Token.Tag.PARENTHESIS_CLOSING);
         } else if (tag === Spreadsheet._Token.Tag.MINUS) {
             console.log("< Factor> :== \"-\" <Factor>");
             this.token = this.token.next();
             this.parseFactor();
         } else {
-            throw new Spreadsheet.FormulaError("unexpected token", this.token.index);
+            throw new Spreadsheet.FormulaError(`Unexpected ${this.token.tag}`, this.token.start.index);
         }
     }
 
@@ -905,6 +908,7 @@ Spreadsheet._Parser = class {
         //<Call> :== "(" <Arguments> ")" | ε
         if (this.token.tag === Spreadsheet._Token.Tag.PARENTHESIS_OPENING) {
             console.log("< Call> :== \"(\" <Arguments> \")\"");
+            this.token = this.token.next();
             this.parseArguments();
             this.expect(Spreadsheet._Token.Tag.PARENTHESIS_CLOSING);
         } else {
