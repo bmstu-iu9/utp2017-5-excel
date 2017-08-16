@@ -148,9 +148,21 @@ const Spreadsheet = class extends EventManager {
      * @param {int} j Column index
      * @param {string} formula Formula
      * @throws {Spreadsheet.FormulaSyntaxError} on syntax error in formula
+     * @function
      */
     setFormula(i, j, formula) {
-
+        let cell = this.cells[i][j];
+        let parser = new Spreadsheet._Parser(formula);
+        let parsed = parser.parse();
+        cell.expression = parsed;
+        if (parsed instanceof Spreadsheet._Expression){
+            cell.value = parsed.evaluate();
+        } else if (parsed instanceof Spreadsheet._CellReference){
+            cell.value = parsed.cell.value;
+        } else {
+            cell.value = parsed;
+        }
+        Spreadsheet.triggerEvent(Spreadsheet.Event.CELL_VALUE_UPDATED);
     }
 
 };
@@ -196,6 +208,16 @@ Spreadsheet.FormulaError = class extends Error {
         super(`${reason} at character ${position}`);
         this.name = "Formula Error";
         this.position = position;
+    }
+};
+
+/**
+ * @class represents an error in cell value
+ */
+Spreadsheet.CellValueError = class extends Error {
+    constructor(cellName) {
+        super(`Uninitialized cell ${cellName}`);
+        this.name = "Cell Value Error";
     }
 };
 
@@ -246,11 +268,11 @@ Spreadsheet._Cell = class {
      */
     constructor() {
         /**
-         * @type {undefined} Cell value
+         * @type {number|string|boolean} Cell value
          */
         this.value = undefined;
         /**
-         * @type {Spreadsheet._Expression} Parsed formula
+         * @type {number|string|boolean|Spreadsheet._Expression|Spreadsheet._CellReference} Parsed formula
          */
         this.expression = undefined;
     }
@@ -260,7 +282,6 @@ Spreadsheet._Cell = class {
 /**
  * Enum for functions that can be used in formulas
  * @enum
- * @private
  * @readonly
  */
 Spreadsheet._Function = Object.freeze({
@@ -488,6 +509,95 @@ Spreadsheet._Function = Object.freeze({
 });
 
 /**
+ * @class Represents a _Cell reference
+ *
+ */
+Spreadsheet._CellReference = class {
+    /**
+     * @constructor
+     * @param {String} cell name, letter/s + number/s
+     */
+    constructor(cell) {
+        let row = 1;
+        let column = undefined;
+        for (let i = 0; cell.charCodeAt(i) > 64;  i++) {
+            row += (cellColumnStr.charCodeAt(i) - 65) + 26 * i;
+        }
+        column = +cell.slice(i) - 1;
+        /**
+         * @type {Spreadsheet._Cell}
+         */
+        this.cell = Spreadsheet.cells[row][column];
+        /**
+         * @type {boolean}
+         */
+        this.rowFixed = undefined;
+        /**
+         * @type {boolean}
+         */
+        this.columnfixed = undefined;
+    }
+
+    /**
+     * Checks whether referenced cell is initialized
+     * @throws {Spreadsheet.CellValueError} if it's not
+     * @returns {boolean} true if it is
+     * @function
+     */
+    check(){
+        let value = this.cell.value;
+        if (typeof value === "undefined" || value === null) {
+            throw new Spreadsheet.CellValueError(cell);
+        }
+        else {
+            return true;
+        }
+    }
+
+};
+
+/**
+ * @class Represents cell formula
+ *
+ */
+Spreadsheet._Expression = class {
+    /**
+     * @constructor
+     * @param {Spreadsheet._Function} func
+     * @param args Array of function arguments
+     * @param {Spreadsheet._Position} position of the Spreadsheet._Token in the formula text
+     */
+    constructor(func, args, position) {
+        this.func = func;
+        this.args = args;
+        this.position = position;
+    }
+    /**
+     * Evaluates formula in the cell
+     * @function
+     * @returns {number|string|boolean} new cell value
+     * @throws {Spreadsheet.CellValueError}
+     * @see Spreadsheet._CellReference.check
+     *
+     */
+    evaluate(){
+        let newargs = [];
+        for (let i = 0; i < this.args.length; i++){
+            if (this.args[i] instanceof Spreadsheet._Expression){
+                newargs.push(this.args[i].evaluate());
+            } else if ((this.args[i] instanceof Spreadsheet._CellReference) && (this.args[i].check())){
+                newargs.push(this.args[i].cell.value);
+            } else {
+                newargs.push(this.args[i]);
+            }
+        }
+        return this.func.apply(newargs);
+    }
+
+
+};
+
+/**
  * @class represents position of token in formula
  * @private
  */
@@ -552,6 +662,33 @@ Spreadsheet._Position = class {
         while(pos.satisfies(p)) pos = pos.skip();
         return pos;
     }
+
+
+    /**
+     * Return next position while collecting current token's body
+     * @returns {Spreadsheet._Position} Position of next character
+     * @param {Spreadsheet._Token} t
+     */
+    skip1(t) {
+        const code = this.getCharCode();
+        t.body+= code + "";
+        if (code === -5) {
+            return this;
+        }
+        return new Spreadsheet._Position(this.formula, this.index + (code > 0xFFFF ? 2 : 1));
+    }
+
+    /**
+     * Skip characters as long as condition while collecting current token's body
+     * @param {RegExp} p
+     * @param {Spreadsheet._Token} t
+     * @returns {Spreadsheet._Position} Position of next token
+     */
+    skipWhile1(p, t) {
+        let pos = this;
+        while(pos.satisfies(p)) pos = pos.skip1(t);
+        return pos;
+    }
 };
 
 /**
@@ -570,6 +707,10 @@ Spreadsheet._Token = class {
          * @type {Spreadsheet._Position} Start position of current token
          */
         this.start = cur;
+        /**
+         * @type {string} This token's body: identifier or cell name if present.
+         */
+        this.body = "";
         while (this.start.getCharCode() !== -5 && String.fromCodePoint(this.start.getCharCode()) === ' ') {
             this.start = this.start.skip();
         }
@@ -632,7 +773,7 @@ Spreadsheet._Token = class {
                 break;
             default:
                 if(this.start.satisfies(/[a-zA-Z]/i)) {
-                    this.follow = this.follow.skipWhile(/[0-9a-zA-Z]/i);
+                    this.follow = this.follow.skipWhile1(/[0-9a-zA-Z]/i, this);
                     let startIndex = this.start.index;
                     let endIndex = this.follow.index;
                     let identifier = this.start.formula.substr(startIndex, endIndex-startIndex);
@@ -644,10 +785,10 @@ Spreadsheet._Token = class {
                         this.tag = Spreadsheet._Token.Tag.IDENTIFIER;
                     }
                 } else if(this.start.satisfies(/[0-9]/i)) {
-                    this.follow = this.follow.skipWhile(/[0-9]/i);
+                    this.follow = this.follow.skipWhile1(/[0-9]/i, this);
                     if (this.follow.satisfies(/[.]/i)) {
-                        this.follow = this.follow.skip();
-                        this.follow = this.follow.skipWhile(/[0-9]/i);
+                        this.follow = this.follow.skip1(this);
+                        this.follow = this.follow.skipWhile1(/[0-9]/i, this);
                     }
                     if(this.follow.satisfies(/[a-zA-Z]/i)) {
                         throw new Spreadsheet.FormulaError("delimiter expected", this.start.index);
@@ -705,7 +846,6 @@ Spreadsheet._Token.Tag = Object.freeze({
 
 /**
  * @class checks formula for grammar
- * @private
  */
 Spreadsheet._Parser = class {
 
@@ -742,32 +882,40 @@ Spreadsheet._Parser = class {
 
     /**
      * Parses Expression rule
+     * @returns {number|string|boolean|Spreadsheet._Expression|Spreadsheet._CellReference}
      */
     parseExpression() {
         // <Expression> :== <Compared> <ComparedRest>
+        let res = undefined;
         console.log("< Expression> :== <Compared> <ComparedRest>");
-        this.parseCompared();
-        this.parseComparedRest();
+        res = this.parseCompared();
+        return this.parseComparedRest(res);
     }
 
     /**
      * Parses ComparedRest rule
+     * @returns {number|string|boolean|Spreadsheet._Expression|Spreadsheet._CellReference}
      */
-    parseComparedRest() {
+    parseComparedRest(larg) {
         //<ComparedRest> :== <ComparisonOperator> <Compared> <ComparedRest> | ε
-        if (this.parseComparisonOperator()) {
+        let rarg = undefined;
+        let type = this.parseComparisonOperator();
+        let currpos = this.token.start;
+        if (type) {
             console.log("< ComparedRest> :== <ComparisonOperator> <Compared> <ComparedRest>");
-            this.parseCompared();
-            this.parseComparedRest()
+            rarg = this.parseCompared();
+            this.parseComparedRest(rarg);
+            return new Spreadsheet._Expression(type, [larg, rarg], currpos);
         } else {
             console.log("< ComparedRest> :== ε");
+            return larg;
         }
 
     }
 
     /**
      * Parses ComparisonOperator rule
-     * @returns {boolean} equality of current token and any of сomparison tokens
+     * @returns {boolean|Spreadsheet._Function} equality of current token and any of сomparison tokens; function ref., if equal
      */
     parseComparisonOperator() {
         //<ComparisonOperator> :== "=" | "<" | ">" | "<=" | ">="
@@ -775,117 +923,151 @@ Spreadsheet._Parser = class {
             case Spreadsheet._Token.Tag.EQUALS:
                 console.log("< ComparisonOperator> :== \"=\"");
                 this.token = this.token.next();
-                return true;
+                return Spreadsheet._Function.EQUALS;
             case Spreadsheet._Token.Tag.LESS_OR_EQUALS:
                 console.log("< ComparisonOperator> :== \"<=\"");
                 this.token = this.token.next();
-                return true;
+                return Spreadsheet._Function.LESSOREQUALS;
             case Spreadsheet._Token.Tag.LESS:
                 console.log("< ComparisonOperator> :== \"<\"");
                 this.token = this.token.next();
-                return true;
+                return Spreadsheet._Function.LESS;
             case Spreadsheet._Token.Tag.GREATER_OR_EQUALS:
                 console.log("< ComparisonOperator> :== \">=\"");
                 this.token = this.token.next();
-                return true;
+                return Spreadsheet._Function.GREATEROREQUALS;
             case Spreadsheet._Token.Tag.GREATER:
                 console.log("< ComparisonOperator> :== \">\"");
                 this.token = this.token.next();
-                return true;
+                return Spreadsheet._Function.GREATER;
             default: return false;
         }
     }
 
     /**
      * Parses Compared rule
+     * @returns {number|string|boolean|Spreadsheet._Expression|Spreadsheet._CellReference}
      */
     parseCompared() {
         //<Compared> :== <Term> <Terms>
+        let res = undefined;
         console.log("< Compared> :== <Term> <Terms>");
-        this.parseTerm();
-        this.parseTerms();
+        res = this.parseTerm();
+        return this.parseTerms(res);
     }
 
     /**
      * Parses Terms rule
+     * @returns {number|string|boolean|Spreadsheet._Expression|Spreadsheet._CellReference}
      */
-    parseTerms() {
+    parseTerms(larg) {
         //<Terms> :== "-" <Term> <Terms> | "+" <Term> <Terms> | ε
+        let res = undefined;
+        let rarg = undefined;
+        let currpos = undefined;
         if (this.token.tag === Spreadsheet._Token.Tag.MINUS) {
             console.log("< Terms> :== \"-\" <Term> <Terms>");
+            currpos = this.token.start;
             this.token = this.token.next();
-            this.parseTerm();
-            this.parseTerms();
+            rarg = this.parseTerm();
+            res = new Spreadsheet._Expression(Spreadsheet._Function.SUBTRACT, [larg, rarg], currpos);
+            return this.parseTerms(res);
         } else if (this.token.tag === Spreadsheet._Token.Tag.PLUS) {
             console.log("< Terms> :== \"+\" <Term> <Terms>");
+            currpos = this.token.start;
             this.token = this.token.next();
-            this.parseTerm();
-            this.parseTerms();
+            rarg = this.parseTerm();
+            res = new Spreadsheet._Expression(Spreadsheet._Function.ADD, [larg, rarg], currpos);
+            return this.parseTerms(res);
         } else {
             console.log("< Terms> :== ε");
+            return larg;
         }
     }
 
     /**
      * Parses Term rule
+     * @returns {number|string|boolean|Spreadsheet._Expression|Spreadsheet._CellReference}
      */
     parseTerm() {
         //<Term> :== <Factor> <Factors>
+        let res = undefined;
         console.log("< Term> :== <Factor> <Factors>");
-        this.parseFactor();
-        this.parseFactors();
+        res = this.parseFactor();
+        return this.parseFactors(res);
     }
 
     /**
      * Parses Factors rule
+     * @returns {number|string|boolean|Spreadsheet._Expression|Spreadsheet._CellReference}
      */
-    parseFactors() {
+    parseFactors(larg) {
         //<Factors> :== "*" <Factor> <Factors> | "/" <Factor> <Factors> | ε
+        let res = undefined;
+        let rarg = undefined;
+        let currpos = undefined;
         if (this.token.tag === Spreadsheet._Token.Tag.TIMES) {
             console.log("< Factors> :== \"*\" <Factor> <Factors>");
+            currpos = this.token.start;
             this.token = this.token.next();
-            this.parseFactor();
-            this.parseFactors();
+            rarg = this.parseFactor();
+            res = new Spreadsheet._Expression(Spreadsheet._Function.MULTIPLY, [larg, rarg], currpos);
+            return this.parseFactors(res);
         } else if (this.token.tag === Spreadsheet._Token.Tag.DIVIDES) {
             console.log("< Factors> :== \"/\" <Factor> <Factors>");
+            currpos = this.token.start;
             this.token = this.token.next();
-            this.parseFactor();
-            this.parseFactors();
+            rarg = this.parseFactor();
+            res = new Spreadsheet._Expression(Spreadsheet._Function.DIVIDE, [larg, rarg], currpos);
+            return this.parseFactors(res);
         } else {
             console.log("< Factors> :== ε");
+            return larg;
         }
     }
 
     /**
      * Parses Factor rule
+     * @returns {number|string|boolean|Spreadsheet._Expression|Spreadsheet._CellReference}
      */
     parseFactor() {
         //<Factor> :== NUMBER | STRING | "TRUE" | "FALSE" | <Identifiable> | "(" <Expression> ")" | "-" <Factor>
         let tag = this.token.tag;
+        let res = undefined;
         if (tag === Spreadsheet._Token.Tag.NUMBER) {
             console.log("< Factor> :== NUMBER");
+            res = +this.token.body;
             this.token = this.token.next();
+            return res;
         } else if (tag === Spreadsheet._Token.Tag.STRING) {
             console.log("< Factor> :== STRING");
+            res = this.token.body;
             this.token = this.token.next();
+            return res;
         } else if (tag === Spreadsheet._Token.Tag.TRUE) {
             console.log("< Factor> :== \"TRUE\"");
+            res = true;
             this.token = this.token.next();
+            return res;
         } else if (tag === Spreadsheet._Token.Tag.FALSE) {
             console.log("< Factor> :== \"FALSE\"");
+            res = false;
             this.token = this.token.next();
+            return res;
         } else if (tag === Spreadsheet._Token.Tag.IDENTIFIER) {
             console.log("< Factor> :== <Identifiable>");
-            this.parseIdentifiable();
+            return this.parseIdentifiable();
         } else if (tag === Spreadsheet._Token.Tag.PARENTHESIS_OPENING) {
             console.log("< Factor> :== \"(\" <Expression> \")\"");
             this.token = this.token.next();
-            this.parseExpression();
+            res = this.parseExpression();
             this.expect(Spreadsheet._Token.Tag.PARENTHESIS_CLOSING);
+            return res;
         } else if (tag === Spreadsheet._Token.Tag.MINUS) {
             console.log("< Factor> :== \"-\" <Factor>");
+            res = this.token.start;
             this.token = this.token.next();
-            this.parseFactor();
+            return new Spreadsheet._Expression(Spreadsheet._Function.NEGATE, this.parseFactor(), res);
         } else {
             throw new Spreadsheet.FormulaError(`Unexpected ${this.token.tag}`, this.token.start.index);
         }
@@ -893,59 +1075,79 @@ Spreadsheet._Parser = class {
 
     /**
      * Parses Identifiable rule
+     * @returns {Spreadsheet._Expression|Spreadsheet._CellReference}
      */
     parseIdentifiable() {
         //<Identifiable> :== IDENTIFIER <Call>
+        let callargs = undefined;
+        let currpos = this.token.start;
         console.log("< Identifiable> :== IDENTIFIER <Call>");
         this.expect(Spreadsheet._Token.Tag.IDENTIFIER);
-        this.parseCall();
+        callargs = this.parseCall();
+        if (callargs === null){
+            return new Spreadsheet._CellReference(this.token.body);
+        } else {
+            return new Spreadsheet._Expression(Spreadsheet._Function[this.token.body], callargs, currpos);
+        }
     }
 
     /**
      * Parses Call rule
+     * @returns {null|number|string|boolean|Spreadsheet._Expression|Spreadsheet._CellReference}
      */
     parseCall() {
         //<Call> :== "(" <Arguments> ")" | ε
         if (this.token.tag === Spreadsheet._Token.Tag.PARENTHESIS_OPENING) {
+            let args = undefined;
             console.log("< Call> :== \"(\" <Arguments> \")\"");
             this.token = this.token.next();
-            this.parseArguments();
+            args = this.parseArguments();
             this.expect(Spreadsheet._Token.Tag.PARENTHESIS_CLOSING);
+            return args;
         } else {
             console.log("< Call> :== ε");
+            return null;
         }
     }
 
     /**
      * Parses Arguments rule
+     * @returns {Array}
      */
     parseArguments() {
         //<Arguments> :== <Expression> <ArgumentsRest> | ε
         let tag = this.token.tag;
-        if (tag === Spreadsheet._Token.Tag.NUMBER || tag === Spreadsheet._Token.Tag.STRING ||
-            tag === Spreadsheet._Token.Tag.TRUE || tag === Spreadsheet._Token.Tag.FALSE ||
-            tag === Spreadsheet._Token.Tag.IDENTIFIER || tag === Spreadsheet._Token.Tag.PARENTHESIS_OPENING ||
-            tag === Spreadsheet._Token.Tag.MINUS ) {
+        if ((tag === Spreadsheet._Token.Tag.NUMBER)||
+            (tag === Spreadsheet._Token.Tag.STRING) ||
+            (tag === Spreadsheet._Token.Tag.TRUE)||
+            (tag === Spreadsheet._Token.Tag.FALSE) ||
+            (tag === Spreadsheet._Token.Tag.IDENTIFIER)  ||
+            (tag === Spreadsheet._Token.Tag.PARENTHESIS_OPENING) ||
+            (tag === Spreadsheet._Token.Tag.MINUS)){
             console.log("< Arguments> :== <Expression> <ArgumentsRest>");
-            this.parseExpression();
-            this.parseArgumentsRest();
+            let args = [];
+            args.push(this.parseExpression());
+            return this.parseArgumentsRest(args);
         } else {
             console.log("< Arguments> :== ε");
+            return [];
         }
     }
 
     /**
      * Parses ArgumentsRest rule
+     * @returns {Array}
      */
-    parseArgumentsRest() {
+    parseArgumentsRest(currargs) {
         //<ArgumentsRest> :== "," <Expression> <ArgumentsRest> | ε
         if (this.token.tag === Spreadsheet._Token.Tag.COMMA) {
             console.log("< ArgumentsRest> :== \",\" <Expression> <ArgumentsRest>");
             this.token = this.token.next();
-            this.parseExpression();
-            this.parseArgumentsRest();
+            currargs.push(this.parseExpression());
+            return this.parseArgumentsRest(currargs);
         } else {
             console.log("< ArgumentsRest> :== ε");
+            return currargs;
         }
     }
 };
@@ -1009,26 +1211,26 @@ Spreadsheet._CellGraph = class {
             v.edges = arr;
         });
     }
-    
+
     /**
-    * Calls dfs and clears color data for every vertex
-    * @param {Spreadsheet._CellGraph.Vertex} vertex
-    * @param {function} callback
-    * @method
-    */
+     * Calls dfs and clears color data for every vertex
+     * @param {Spreadsheet._CellGraph.Vertex} vertex
+     * @param {function} callback
+     * @method
+     */
     iterateFrom(vertex, callback) {
         this.dfs(vertex, callback);
         this.vertices.forEach(v => {
             v._color = 0;
         });
     }
-    
+
     /**
-    * Browses all the vertices and calls callback() from every vertex
-    * @param {Spreadsheet._CellGraph.Vertex} current
-    * @param {function} callback
-    * @method
-    */
+     * Browses all the vertices and calls callback() from every vertex
+     * @param {Spreadsheet._CellGraph.Vertex} current
+     * @param {function} callback
+     * @method
+     */
     dfs(current, callback) {
         current._color = 1;
         callback(current);
