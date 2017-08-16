@@ -101,8 +101,8 @@ const Spreadsheet = class extends EventManager {
      */
     _updateSize(i, j) {
         if (i < 0 || j < 0) return;
-        let rows = this.cells.length;
-        let columns = this.cells.length > 0 ? this.cells[0].length : 0;
+        const rows = this.cells.length;
+        const columns = this.cells.length > 0 ? this.cells[0].length : 0;
         if (i<rows) {
             for (let index = i; index < rows; index++) {
                 this.cells.pop();
@@ -155,14 +155,14 @@ const Spreadsheet = class extends EventManager {
         let parser = new Spreadsheet._Parser(formula);
         let parsed = parser.parse();
         cell.expression = parsed;
-        if (parsed instanceof Spreadsheet._Expression){
+        if (parsed instanceof Spreadsheet._Expression) {
             cell.value = parsed.evaluate();
-        } else if (parsed instanceof Spreadsheet._CellReference){
+        } else if (parsed instanceof Spreadsheet._CellReference) {
             cell.value = parsed.cell.value;
         } else {
             cell.value = parsed;
         }
-        Spreadsheet.triggerEvent(Spreadsheet.Event.CELL_VALUE_UPDATED);
+        this.triggerEvent(Spreadsheet.Event.CELL_VALUE_UPDATED, i, j, cell.value);
     }
 
 };
@@ -214,9 +214,9 @@ Spreadsheet.FormulaError = class extends Error {
 /**
  * @class represents an error in cell value
  */
-Spreadsheet.CellValueError = class extends Error {
-    constructor(cellName) {
-        super(`Uninitialized cell ${cellName}`);
+Spreadsheet.FormulaDependencyOnEmptyCellError = class extends Spreadsheet.FormulaError {
+    constructor(cellName, position) {
+        super(`Uninitialized cell ${cellName}`, position);
         this.name = "Cell Value Error";
     }
 };
@@ -518,12 +518,12 @@ Spreadsheet._CellReference = class {
      * @param {String} cell name, letter/s + number/s
      */
     constructor(cell) {
-        let row = 1;
-        let column = undefined;
-        for (let i = 0; cell.charCodeAt(i) > 64;  i++) {
-            row += (cellColumnStr.charCodeAt(i) - 65) + 26 * i;
+        let row = 0;
+        let i = 0;
+        for (; cell.charCodeAt(i) > 64;  i++) {
+            row += (cell.charCodeAt(i) - 65) + 26 * i;
         }
-        column = +cell.slice(i) - 1;
+         const column = (+cell.slice(i)) - 1;
         /**
          * @type {Spreadsheet._Cell}
          */
@@ -536,22 +536,6 @@ Spreadsheet._CellReference = class {
          * @type {boolean}
          */
         this.columnfixed = undefined;
-    }
-
-    /**
-     * Checks whether referenced cell is initialized
-     * @throws {Spreadsheet.CellValueError} if it's not
-     * @returns {boolean} true if it is
-     * @function
-     */
-    check(){
-        let value = this.cell.value;
-        if (typeof value === "undefined" || value === null) {
-            throw new Spreadsheet.CellValueError(cell);
-        }
-        else {
-            return true;
-        }
     }
 
 };
@@ -576,22 +560,25 @@ Spreadsheet._Expression = class {
      * Evaluates formula in the cell
      * @function
      * @returns {number|string|boolean} new cell value
-     * @throws {Spreadsheet.CellValueError}
+     * @throws {Spreadsheet.FormulaDependencyOnEmptyCellError}
      * @see Spreadsheet._CellReference.check
      *
      */
-    evaluate(){
-        let newargs = [];
-        for (let i = 0; i < this.args.length; i++){
-            if (this.args[i] instanceof Spreadsheet._Expression){
-                newargs.push(this.args[i].evaluate());
-            } else if ((this.args[i] instanceof Spreadsheet._CellReference) && (this.args[i].check())){
-                newargs.push(this.args[i].cell.value);
+    evaluate() {
+        const newArgs = this.args.map((elem)=>{
+            if (elem instanceof Spreadsheet._Expression) {
+                return elem.evaluate();
+            } else if (elem instanceof Spreadsheet._CellReference) {
+                const value = elem.cell.value;
+                if (typeof value === "undefined" || value === null) {
+                    throw new Spreadsheet.FormulaDependencyOnEmptyCellError(this.args[i], this.position);
+                }
+                return elem.cell.value;
             } else {
-                newargs.push(this.args[i]);
+                return elem;
             }
-        }
-        return this.func.apply(newargs);
+        });
+        return this.func.apply(this, newArgs);
     }
 
 
@@ -633,12 +620,27 @@ Spreadsheet._Position = class {
      * @returns {boolean} character satisfaction to condition
      */
     satisfies(p) {
-        let code = this.getCharCode();
+        const code = this.getCharCode();
         if (code !== -5) {
             return String.fromCodePoint(code).match(p) !== null
         }
         return false
     }
+
+    /**
+     * Return next position while collecting token body
+     * @returns {Spreadsheet._Position} Position of next character
+     * @param {Spreadsheet._Token} t
+     */
+    skipWithBody(t) {
+        const code = this.getCharCode();
+        t.body+= String.fromCharCode(code);
+        if (code === -5) {
+            return this;
+        }
+        return new Spreadsheet._Position(this.formula, this.index + (code > 0xFFFF ? 2 : 1));
+    }
+
 
     /**
      * Return next position
@@ -655,40 +657,19 @@ Spreadsheet._Position = class {
     /**
      * Skip characters as long as condition
      * @param {RegExp} p
+     * @param {Spreadsheet._Token} withBody is present if skipping with collecting token body is needed
      * @returns {Spreadsheet._Position} Position of next token
      */
-    skipWhile(p) {
+    skipWhile(p, withBody) {
         let pos = this;
-        while(pos.satisfies(p)) pos = pos.skip();
-        return pos;
-    }
-
-
-    /**
-     * Return next position while collecting current token's body
-     * @returns {Spreadsheet._Position} Position of next character
-     * @param {Spreadsheet._Token} t
-     */
-    skip1(t) {
-        const code = this.getCharCode();
-        t.body+= code + "";
-        if (code === -5) {
-            return this;
+        if (withBody) {
+            while(pos.satisfies(p)) pos = pos.skipWithBody(withBody);
+        } else {
+            while(pos.satisfies(p)) pos = pos.skip();
         }
-        return new Spreadsheet._Position(this.formula, this.index + (code > 0xFFFF ? 2 : 1));
-    }
-
-    /**
-     * Skip characters as long as condition while collecting current token's body
-     * @param {RegExp} p
-     * @param {Spreadsheet._Token} t
-     * @returns {Spreadsheet._Position} Position of next token
-     */
-    skipWhile1(p, t) {
-        let pos = this;
-        while(pos.satisfies(p)) pos = pos.skip1(t);
         return pos;
     }
+
 };
 
 /**
@@ -718,7 +699,7 @@ Spreadsheet._Token = class {
          * @type {Spreadsheet._Position} End position of current token
          */
         this.follow = this.start.skip();
-        let code = this.start.getCharCode();
+        const code = this.start.getCharCode();
         if (code === -5) {
             this.tag = Spreadsheet._Token.Tag.END_OF_TEXT;
             return;
@@ -750,7 +731,7 @@ Spreadsheet._Token = class {
                 break;
             case '\"':
                 while (this.follow.getCharCode() !== -5 && String.fromCodePoint(this.follow.getCharCode()) !== "\"") {
-                    this.follow = this.follow.skip();
+                    this.follow = this.follow.skip(this);
                 }
                 this.follow = this.follow.skip();
                 this.tag = Spreadsheet._Token.Tag.STRING;
@@ -773,10 +754,11 @@ Spreadsheet._Token = class {
                 break;
             default:
                 if(this.start.satisfies(/[a-zA-Z]/i)) {
-                    this.follow = this.follow.skipWhile1(/[0-9a-zA-Z]/i, this);
+                    this.body+=String.fromCharCode(this.start.getCharCode());
+                    this.follow = this.follow.skipWhile(/[0-9a-zA-Z]/i, this);
                     let startIndex = this.start.index;
                     let endIndex = this.follow.index;
-                    let identifier = this.start.formula.substr(startIndex, endIndex-startIndex);
+                    const identifier = this.start.formula.substr(startIndex, endIndex-startIndex);
                     if (identifier === 'TRUE') {
                         this.tag = Spreadsheet._Token.Tag.TRUE
                     } else if (identifier === 'FALSE') {
@@ -785,10 +767,11 @@ Spreadsheet._Token = class {
                         this.tag = Spreadsheet._Token.Tag.IDENTIFIER;
                     }
                 } else if(this.start.satisfies(/[0-9]/i)) {
-                    this.follow = this.follow.skipWhile1(/[0-9]/i, this);
+                    this.body+=String.fromCharCode(this.start.getCharCode());
+                    this.follow = this.follow.skipWhile(/[0-9]/i, this);
                     if (this.follow.satisfies(/[.]/i)) {
-                        this.follow = this.follow.skip1(this);
-                        this.follow = this.follow.skipWhile1(/[0-9]/i, this);
+                        this.follow = this.follow.skipWithBody();
+                        this.follow = this.follow.skipWhile(/[0-9]/i, this);
                     }
                     if(this.follow.satisfies(/[a-zA-Z]/i)) {
                         throw new Spreadsheet.FormulaError("delimiter expected", this.start.index);
@@ -876,8 +859,9 @@ Spreadsheet._Parser = class {
      * Parses formula
      */
     parse() {
-        this.parseExpression();
+        const res = this.parseExpression();
         this.expect(Spreadsheet._Token.Tag.END_OF_TEXT);
+        return res;
     }
 
     /**
@@ -886,9 +870,8 @@ Spreadsheet._Parser = class {
      */
     parseExpression() {
         // <Expression> :== <Compared> <ComparedRest>
-        let res = undefined;
         console.log("< Expression> :== <Compared> <ComparedRest>");
-        res = this.parseCompared();
+        const res = this.parseCompared();
         return this.parseComparedRest(res);
     }
 
@@ -896,19 +879,18 @@ Spreadsheet._Parser = class {
      * Parses ComparedRest rule
      * @returns {number|string|boolean|Spreadsheet._Expression|Spreadsheet._CellReference}
      */
-    parseComparedRest(larg) {
+    parseComparedRest(leftArg) {
         //<ComparedRest> :== <ComparisonOperator> <Compared> <ComparedRest> | ε
-        let rarg = undefined;
-        let type = this.parseComparisonOperator();
-        let currpos = this.token.start;
+        const type = this.parseComparisonOperator();
+        const currentPosition = this.token.start;
         if (type) {
             console.log("< ComparedRest> :== <ComparisonOperator> <Compared> <ComparedRest>");
-            rarg = this.parseCompared();
-            this.parseComparedRest(rarg);
-            return new Spreadsheet._Expression(type, [larg, rarg], currpos);
+            const rightArg = this.parseCompared();
+            let currentExpression = new Spreadsheet._Expression(type, [leftArg, rightArg], currentPosition);
+            return this.parseComparedRest(currentExpression);
         } else {
             console.log("< ComparedRest> :== ε");
-            return larg;
+            return leftArg;
         }
 
     }
@@ -950,9 +932,8 @@ Spreadsheet._Parser = class {
      */
     parseCompared() {
         //<Compared> :== <Term> <Terms>
-        let res = undefined;
         console.log("< Compared> :== <Term> <Terms>");
-        res = this.parseTerm();
+        const res = this.parseTerm();
         return this.parseTerms(res);
     }
 
@@ -960,28 +941,26 @@ Spreadsheet._Parser = class {
      * Parses Terms rule
      * @returns {number|string|boolean|Spreadsheet._Expression|Spreadsheet._CellReference}
      */
-    parseTerms(larg) {
+    parseTerms(leftArg) {
         //<Terms> :== "-" <Term> <Terms> | "+" <Term> <Terms> | ε
-        let res = undefined;
-        let rarg = undefined;
-        let currpos = undefined;
+        let res;
+        let rightArg;
+        const currentPosition = this.token.start;
         if (this.token.tag === Spreadsheet._Token.Tag.MINUS) {
             console.log("< Terms> :== \"-\" <Term> <Terms>");
-            currpos = this.token.start;
             this.token = this.token.next();
-            rarg = this.parseTerm();
-            res = new Spreadsheet._Expression(Spreadsheet._Function.SUBTRACT, [larg, rarg], currpos);
+            rightArg = this.parseTerm();
+            res = new Spreadsheet._Expression(Spreadsheet._Function.SUBTRACT, [leftArg, rightArg], currentPosition);
             return this.parseTerms(res);
         } else if (this.token.tag === Spreadsheet._Token.Tag.PLUS) {
             console.log("< Terms> :== \"+\" <Term> <Terms>");
-            currpos = this.token.start;
             this.token = this.token.next();
-            rarg = this.parseTerm();
-            res = new Spreadsheet._Expression(Spreadsheet._Function.ADD, [larg, rarg], currpos);
+            rightArg = this.parseTerm();
+            res = new Spreadsheet._Expression(Spreadsheet._Function.ADD, [leftArg, rightArg], currentPosition);
             return this.parseTerms(res);
         } else {
             console.log("< Terms> :== ε");
-            return larg;
+            return leftArg;
         }
     }
 
@@ -991,9 +970,8 @@ Spreadsheet._Parser = class {
      */
     parseTerm() {
         //<Term> :== <Factor> <Factors>
-        let res = undefined;
         console.log("< Term> :== <Factor> <Factors>");
-        res = this.parseFactor();
+        const res = this.parseFactor();
         return this.parseFactors(res);
     }
 
@@ -1001,28 +979,26 @@ Spreadsheet._Parser = class {
      * Parses Factors rule
      * @returns {number|string|boolean|Spreadsheet._Expression|Spreadsheet._CellReference}
      */
-    parseFactors(larg) {
+    parseFactors(leftArg) {
         //<Factors> :== "*" <Factor> <Factors> | "/" <Factor> <Factors> | ε
-        let res = undefined;
-        let rarg = undefined;
-        let currpos = undefined;
+        let res;
+        let rightArg;
+        const currentPosition = this.token.start;
         if (this.token.tag === Spreadsheet._Token.Tag.TIMES) {
             console.log("< Factors> :== \"*\" <Factor> <Factors>");
-            currpos = this.token.start;
             this.token = this.token.next();
-            rarg = this.parseFactor();
-            res = new Spreadsheet._Expression(Spreadsheet._Function.MULTIPLY, [larg, rarg], currpos);
+            rightArg = this.parseFactor();
+            res = new Spreadsheet._Expression(Spreadsheet._Function.MULTIPLY, [leftArg, rightArg], currentPosition);
             return this.parseFactors(res);
         } else if (this.token.tag === Spreadsheet._Token.Tag.DIVIDES) {
             console.log("< Factors> :== \"/\" <Factor> <Factors>");
-            currpos = this.token.start;
             this.token = this.token.next();
-            rarg = this.parseFactor();
-            res = new Spreadsheet._Expression(Spreadsheet._Function.DIVIDE, [larg, rarg], currpos);
+            rightArg = this.parseFactor();
+            res = new Spreadsheet._Expression(Spreadsheet._Function.DIVIDE, [leftArg, rightArg], currentPosition);
             return this.parseFactors(res);
         } else {
             console.log("< Factors> :== ε");
-            return larg;
+            return leftArg;
         }
     }
 
@@ -1032,8 +1008,8 @@ Spreadsheet._Parser = class {
      */
     parseFactor() {
         //<Factor> :== NUMBER | STRING | "TRUE" | "FALSE" | <Identifiable> | "(" <Expression> ")" | "-" <Factor>
-        let tag = this.token.tag;
-        let res = undefined;
+        const tag = this.token.tag;
+        let res;
         if (tag === Spreadsheet._Token.Tag.NUMBER) {
             console.log("< Factor> :== NUMBER");
             res = +this.token.body;
@@ -1046,14 +1022,12 @@ Spreadsheet._Parser = class {
             return res;
         } else if (tag === Spreadsheet._Token.Tag.TRUE) {
             console.log("< Factor> :== \"TRUE\"");
-            res = true;
             this.token = this.token.next();
-            return res;
+            return true;
         } else if (tag === Spreadsheet._Token.Tag.FALSE) {
             console.log("< Factor> :== \"FALSE\"");
-            res = false;
             this.token = this.token.next();
-            return res;
+            return false;
         } else if (tag === Spreadsheet._Token.Tag.IDENTIFIER) {
             console.log("< Factor> :== <Identifiable>");
             return this.parseIdentifiable();
@@ -1079,29 +1053,30 @@ Spreadsheet._Parser = class {
      */
     parseIdentifiable() {
         //<Identifiable> :== IDENTIFIER <Call>
-        let callargs = undefined;
-        let currpos = this.token.start;
+        const currentPosition = this.token.start;
+        const res = this.token.body;
         console.log("< Identifiable> :== IDENTIFIER <Call>");
         this.expect(Spreadsheet._Token.Tag.IDENTIFIER);
-        callargs = this.parseCall();
-        if (callargs === null){
-            return new Spreadsheet._CellReference(this.token.body);
+        const callArgs = this.parseCall();
+        if (callArgs === null) {
+            console.log(res);
+            return new Spreadsheet._CellReference(res);
         } else {
-            return new Spreadsheet._Expression(Spreadsheet._Function[this.token.body], callargs, currpos);
+            console.log(res);
+            return new Spreadsheet._Expression(Spreadsheet._Function[res], callArgs, currentPosition);
         }
     }
 
     /**
      * Parses Call rule
-     * @returns {null|number|string|boolean|Spreadsheet._Expression|Spreadsheet._CellReference}
+     * @returns {Array}
      */
     parseCall() {
         //<Call> :== "(" <Arguments> ")" | ε
         if (this.token.tag === Spreadsheet._Token.Tag.PARENTHESIS_OPENING) {
-            let args = undefined;
             console.log("< Call> :== \"(\" <Arguments> \")\"");
             this.token = this.token.next();
-            args = this.parseArguments();
+            const args = this.parseArguments();
             this.expect(Spreadsheet._Token.Tag.PARENTHESIS_CLOSING);
             return args;
         } else {
@@ -1116,18 +1091,16 @@ Spreadsheet._Parser = class {
      */
     parseArguments() {
         //<Arguments> :== <Expression> <ArgumentsRest> | ε
-        let tag = this.token.tag;
+        const tag = this.token.tag;
         if ((tag === Spreadsheet._Token.Tag.NUMBER)||
             (tag === Spreadsheet._Token.Tag.STRING) ||
             (tag === Spreadsheet._Token.Tag.TRUE)||
             (tag === Spreadsheet._Token.Tag.FALSE) ||
             (tag === Spreadsheet._Token.Tag.IDENTIFIER)  ||
             (tag === Spreadsheet._Token.Tag.PARENTHESIS_OPENING) ||
-            (tag === Spreadsheet._Token.Tag.MINUS)){
+            (tag === Spreadsheet._Token.Tag.MINUS)) {
             console.log("< Arguments> :== <Expression> <ArgumentsRest>");
-            let args = [];
-            args.push(this.parseExpression());
-            return this.parseArgumentsRest(args);
+            return this.parseArgumentsRest([this.parseExpression()]);
         } else {
             console.log("< Arguments> :== ε");
             return [];
@@ -1138,16 +1111,16 @@ Spreadsheet._Parser = class {
      * Parses ArgumentsRest rule
      * @returns {Array}
      */
-    parseArgumentsRest(currargs) {
+    parseArgumentsRest(currArgs) {
         //<ArgumentsRest> :== "," <Expression> <ArgumentsRest> | ε
         if (this.token.tag === Spreadsheet._Token.Tag.COMMA) {
             console.log("< ArgumentsRest> :== \",\" <Expression> <ArgumentsRest>");
             this.token = this.token.next();
-            currargs.push(this.parseExpression());
-            return this.parseArgumentsRest(currargs);
+            currArgs.push(this.parseExpression());
+            return this.parseArgumentsRest(currArgs);
         } else {
             console.log("< ArgumentsRest> :== ε");
-            return currargs;
+            return currArgs;
         }
     }
 };
