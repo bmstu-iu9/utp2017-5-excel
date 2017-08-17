@@ -7,7 +7,7 @@
     <title>Spreadsheet</title>
 
     <!-- Open Sans from Google Fonts -->
-    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700&amp;subset=cyrillic" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,400i,600,600i,700,700i&amp;subset=cyrillic,cyrillic-ext,latin-ext" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css?family=Cousine&amp;subset=cyrillic,cyrillic-ext,latin-ext" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
@@ -50,7 +50,69 @@ document.addEventListener("DOMContentLoaded", () => {
         <div id="formula-error"></div>
         <div id="formula"></div>
     </li>
-    <li>Toolbar #2</li>
+    <li>
+        <div class="controls-group">
+            <div class="icon toggle requires-selection disabled material-icons" id="bold">format_bold</div>
+            <div class="icon toggle requires-selection disabled material-icons" id="italic">format_italic</div>
+            <div class="icon toggle requires-selection disabled material-icons" id="underlined">format_underlined</div>
+            <div class="dropdown-wrap">
+                <div class="icon toggle requires-selection disabled dropdown-toggle color-picker material-icons">format_color_text</div>
+                <ul class="dropdown color" id="color-text"> <!-- We need a real color palette here -->
+                    <li style="background-color: #000;" class="selected"></li>
+                    <li style="background-color: #F00;"></li>
+                    <li style="background-color: #0F0;"></li>
+                    <li style="background-color: #00F;"></li>
+                </ul>
+            </div>
+        </div>
+        <div class="controls-group">
+            <div class="icon switch requires-selection disabled material-icons" data-group="text-align" id="align-left">format_align_left</div>
+            <div class="icon switch requires-selection disabled material-icons" data-group="text-align" id="align-center">format_align_center</div>
+            <div class="icon switch requires-selection disabled material-icons" data-group="text-align" id="align-right">format_align_right</div>
+            <div class="icon switch requires-selection disabled material-icons" data-group="text-align" id="align-justify">format_align_justify</div>
+        </div>
+        <div class="controls-group">
+            <div class="dropdown-wrap">
+                <div class="icon toggle requires-selection disabled dropdown-toggle color-picker material-icons">format_color_fill</div>
+                <ul class="dropdown color" id="color-fill"> <!-- We need a real color palette here -->
+                    <li style="background-color: #FFF;" class="selected"></li>
+                    <li style="background-color: #F00;"></li>
+                    <li style="background-color: #0F0;"></li>
+                    <li style="background-color: #00F;"></li>
+                </ul>
+            </div>
+            <div class="dropdown-wrap">
+                <div class="icon toggle dropdown-toggle color-picker material-icons">border_color</div>
+                <ul class="dropdown color" id="color-border"> <!-- We need a real color palette here -->
+                    <li style="background-color: #000;" class="selected"></li>
+                    <li style="background-color: #F00;"></li>
+                    <li style="background-color: #0F0;"></li>
+                    <li style="background-color: #00F;"></li>
+                </ul>
+            </div>
+            <div class="dropdown-wrap">
+                <div class="toggle dropdown-toggle select-toggle">No borders</div>
+                <ul class="dropdown select" id="border-width"> <!-- We need a real color palette here -->
+                    <li data-value="0" class="selected">No borders</li>
+                    <li data-value="1">1 px</li>
+                    <li data-value="2">2 px</li>
+                    <li data-value="3">3 px</li>
+                    <li data-value="4">4 px</li>
+                    <li data-value="5">5 px</li>
+                </ul>
+            </div>
+            <div class="icon button requires-selection disabled material-icons" id="border-top">border_top</div>
+            <div class="icon button requires-selection disabled material-icons" id="border-right">border_right</div>
+            <div class="icon button requires-selection disabled material-icons" id="border-bottom">border_bottom</div>
+            <div class="icon button requires-selection disabled material-icons" id="border-left">border_left</div>
+            <div class="icon button requires-selection disabled material-icons" id="border-horizontal">border_horizontal</div>
+            <div class="icon button requires-selection disabled material-icons" id="border-vertical">border_vertical</div>
+            <div class="icon button requires-selection disabled material-icons" id="border-inner">border_inner</div>
+            <div class="icon button requires-selection disabled material-icons" id="border-outer">border_outer</div>
+            <div class="icon button requires-selection disabled material-icons" id="border-all">border_all</div>
+            <div class="icon button requires-selection disabled material-icons" id="border-clear">border_clear</div>
+        </div>
+    </li>
     <li>Toolbar #3</li>
     <li>Toolbar #4</li>
 </ul>

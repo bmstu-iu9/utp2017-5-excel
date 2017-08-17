@@ -104,11 +104,132 @@ ul, ol {
   border-radius: 3px;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.15); }
 
-#toolbar > li {
-  display: none; }
-
 #toolbar > li.active {
   display: block; }
+  #toolbar > li.active .controls-group {
+    position: relative;
+    float: left;
+    padding: 0 8px 0 9px; }
+  #toolbar > li.active .controls-group:not(:first-child)::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    height: 24px;
+    margin: auto 0;
+    border-left: 1px solid #E2E2E2; }
+  #toolbar > li.active .icon {
+    display: block;
+    float: left;
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+    white-space: nowrap;
+    text-align: center;
+    margin: 5px 3px;
+    border-radius: 4px;
+    font-size: 20px;
+    color: rgba(0, 0, 0, 0.56); }
+  #toolbar > li.active .toggle, #toolbar > li.active .switch, #toolbar > li.active .button {
+    cursor: pointer; }
+  #toolbar > li.active .toggle:not(.disabled):not(.active) {
+    transition: background 0.135s ease; }
+  #toolbar > li.active .toggle:not(.disabled):not(.active):hover {
+    background: rgba(0, 0, 0, 0.05); }
+  #toolbar > li.active .switch:not(.disabled):not(.active) {
+    transition: background 0.135s ease; }
+  #toolbar > li.active .switch:not(.disabled):not(.active):hover {
+    background: rgba(0, 0, 0, 0.05); }
+  #toolbar > li.active button:not(.disabled) {
+    transition: background 0.135s ease; }
+  #toolbar > li.active button:not(.disabled):hover {
+    background: rgba(0, 0, 0, 0.05); }
+  #toolbar > li.active button:not(.disabled):active {
+    transition: background 0s;
+    background: rgba(0, 0, 0, 0.09); }
+  #toolbar > li.active .toggle.active, #toolbar > li.active .switch.active {
+    background: #C8C8C8; }
+  #toolbar > li.active .toggle.disabled, #toolbar > li.active .switch.disabled, #toolbar > li.active .button.disabled {
+    color: rgba(0, 0, 0, 0.33);
+    cursor: default; }
+  #toolbar > li.active .dropdown-toggle {
+    float: none;
+    position: relative;
+    padding-right: 12px; }
+  #toolbar > li.active .dropdown-toggle::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 0;
+    height: 0;
+    margin: auto 4px;
+    border: 4px solid transparent;
+    border-top: 5px solid rgba(0, 0, 0, 0.5);
+    border-bottom-width: 0;
+    pointer-events: none; }
+  #toolbar > li.active .dropdown-toggle.disabled::after {
+    border-top-color: rgba(0, 0, 0, 0.25); }
+  #toolbar > li.active .dropdown-wrap {
+    position: relative;
+    float: left; }
+  #toolbar > li.active .dropdown {
+    position: absolute;
+    top: 38px;
+    left: 8px;
+    z-index: 65536;
+    background: #FFF;
+    border-radius: 3px;
+    box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.16);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.135s ease; }
+  #toolbar > li.active .dropdown-toggle.icon + .dropdown {
+    left: 3px; }
+  #toolbar > li.active .dropdown-toggle.active + .dropdown {
+    opacity: 1;
+    pointer-events: auto; }
+  #toolbar > li.active .select-toggle {
+    margin: 8px;
+    padding: 0 18px 0 3px;
+    border-bottom: 1px dotted rgba(0, 0, 0, 0.4);
+    border-radius: 3px 3px 0 0;
+    font-size: 0.82em;
+    line-height: 24px; }
+  #toolbar > li.active .select li {
+    display: block;
+    min-width: 50px;
+    padding: 6px 12px;
+    font-size: 0.92em;
+    color: #424242;
+    white-space: nowrap;
+    cursor: pointer; }
+  #toolbar > li.active .select li {
+    transition: background 0.135s ease; }
+  #toolbar > li.active .select li:hover {
+    background: rgba(0, 0, 0, 0.05); }
+  #toolbar > li.active .select li:active {
+    transition: background 0s;
+    background: rgba(0, 0, 0, 0.09); }
+  #toolbar > li.active .color {
+    padding: 6px;
+    width: 176px; }
+  #toolbar > li.active .color > li {
+    display: block;
+    float: left;
+    margin: 3px;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    outline: 1px solid #FFF;
+    transition: outline-color 0.135s ease; }
+  #toolbar > li.active .color > li:hover {
+    outline-color: #333; }
+
+#toolbar > li {
+  display: none; }
 
 #formula {
   font-family: Cousine, Consolas, monospace;
@@ -208,15 +329,11 @@ ul, ol {
   #table td.selected {
     background-color: #ECF3FF; }
   #table td.selected-first {
-    background-color: #FFF; }
-  #table td.selection-border-top {
-    border-top: 2px solid #4285F4 !important; }
+    background-color: #FFF !important; }
   #table td.selection-border-right {
     border-right: 2px solid #4285F4 !important; }
   #table td.selection-border-bottom {
     border-bottom: 2px solid #4285F4 !important; }
-  #table td.selection-border-left {
-    border-left: 2px solid #4285F4 !important; }
   #table td.error {
     background-image: url(../assets/images/error.png);
     background-size: 24px 24px;
