@@ -92,40 +92,45 @@ const Spreadsheet = class extends EventManager {
          * @type {!Array<Array<Spreadsheet._Cell>>} Array of spreadsheet cells
          */
         this.cells = [];
+        /**
+         * @type {Spreadsheet._CellGraph} Graph
+         */
+        this.graph = new Spreadsheet._CellGraph();
     }
 
     /**
-     * Updates size of table
-     * @param {int} i New row index
-     * @param {int} j New column index
+     * Makes table at least i rows in height at j column in width
+     * @param {int} height Minimum table height
+     * @param {int} width Minimum table width
+     * @private
      */
-    _updateSize(i, j) {
-        if (i < 0 || j < 0) return;
+    _expandTo(height, width) {
+        if (height < 0 || width < 0) return;
         const rows = this.cells.length;
         const columns = this.cells.length > 0 ? this.cells[0].length : 0;
-        if (i<rows) {
-            for (let index = i; index < rows; index++) {
-                this.cells.pop();
-            }
-        } else if (i>rows) {
-            for (let index = rows; index < i; index++) {
-                this.cells[index] = Array(columns).fill(new Spreadsheet._Cell());
+        if (height > rows) {
+            for (let i = rows; i < height; i++) {
+                this.cells[i] = (new Array(columns)).fill(null).map((_, j) => new Spreadsheet._Cell(i, j));
             }
         }
+        if (width > columns) {
+            for (let i = 0; i < height; i++) {
+                for (let j = columns; j < width; j++) {
+                    this.cells[i][j] = new Spreadsheet._Cell(i, j);
+                }
+            }
+        }
+    }
 
-        if (j<columns) {
-            for (let indexJ = 0; indexJ < i; indexJ++) {
-                for (let indexI = j; indexI < columns; indexI++) {
-                    this.cells[indexJ].pop();
-                }
-            }
-        } else if (j>columns) {
-            for (let indexJ = 0; indexJ < i; indexJ++) {
-                for (let indexI = columns; indexI < j; indexI++) {
-                    this.cells[indexJ][indexI] = new Spreadsheet._Cell();
-                }
-            }
-        }
+    /**
+     * Checks whether a cell with given coordinates exists in the table
+     * @param {int} i
+     * @param {int} j
+     * @returns {boolean}
+     * @private
+     */
+    _cellExists(i, j) {
+        return i >= 0 && j >= 0 && i < this.cells.length && j < this.cells[0].length;
     }
 
     /**
@@ -136,9 +141,7 @@ const Spreadsheet = class extends EventManager {
      */
     getFormula(i, j) {
 
-
-
-        return "";
+        return this._cellExists(i, j) ? this.cells[i][j].formula : "";
 
     }
 
@@ -151,18 +154,48 @@ const Spreadsheet = class extends EventManager {
      * @function
      */
     setFormula(i, j, formula) {
-        let cell = this.cells[i][j];
-        let parser = new Spreadsheet._Parser(formula);
-        let parsed = parser.parse();
-        cell.expression = parsed;
-        if (parsed instanceof Spreadsheet._Expression) {
-            cell.value = parsed.evaluate();
-        } else if (parsed instanceof Spreadsheet._CellReference) {
-            cell.value = parsed.cell.value;
-        } else {
-            cell.value = parsed;
+
+        this._expandTo(i + 1, j + 1);
+        this.cells[i][j].formula = formula;
+
+        const parser = new Spreadsheet._Parser(formula);
+        const expression = this.cells[i][j].expression = parser.parse();
+
+        const vertex = this.graph.getVertexByCoordinates(i, j);
+        this.graph.detachVertex(vertex);
+        const lookThroughExpression = expression => {
+            if (expression instanceof Spreadsheet._CellReference) {
+                const topVertex = this.graph.getVertexByCoordinates(expression.row, expression.row);
+                this.graph.addEdge(vertex, topVertex);
+            } else if (expression instanceof Spreadsheet._Expression) {
+                expression.args.forEach(expression => lookThroughExpression(expression));
+            }
+        };
+        lookThroughExpression(expression);
+
+        const cycle = this.graph.findCycleFrom(vertex);
+        if (cycle) {
+            cycle.forEach(vertex =>
+                this.triggerEvent(Spreadsheet.Event.CELL_CIRCULAR_DEPENDENCY_DETECTED, vertex.row, vertex.column));
+            return;
         }
-        this.triggerEvent(Spreadsheet.Event.CELL_VALUE_UPDATED, i, j, cell.value);
+
+        this.graph.iterateFrom(vertex, vertex => {
+            const cell = this.cells[vertex.row][vertex.column];
+            if (cell.expression instanceof Spreadsheet._Expression) {
+                cell.value = cell.expression.evaluate(this);
+            } else if (cell.expression instanceof Spreadsheet._CellReference) {
+                if (!this._cellExists(cell.expression.row, cell.expression.column) || this.cells[cell.expression.row][cell.expression.column].value == null) {
+                    cell.value = undefined;
+                    throw new Spreadsheet.FormulaDependencyOnEmptyCellError(cell.expression.position);
+                }
+                cell.value = this.cells[cell.expression.row][cell.expression.column].value;
+            } else {
+                cell.value = cell.expression;
+            }
+            this.triggerEvent(Spreadsheet.Event.CELL_VALUE_UPDATED, vertex.row, vertex.column, cell.value);
+        });
+
     }
 
 };
@@ -215,8 +248,8 @@ Spreadsheet.FormulaError = class extends Error {
  * @class represents an error in cell value
  */
 Spreadsheet.FormulaDependencyOnEmptyCellError = class extends Spreadsheet.FormulaError {
-    constructor(cellName, position) {
-        super(`Uninitialized cell ${cellName}`, position);
+    constructor(position) {
+        super(`Dependency on uninitialized cell`, position);
         this.name = "Cell Value Error";
     }
 };
@@ -266,7 +299,7 @@ Spreadsheet._Cell = class {
     /**
      * @constructor
      */
-    constructor() {
+    constructor(row, column) {
         /**
          * @type {number|string|boolean} Cell value
          */
@@ -275,6 +308,10 @@ Spreadsheet._Cell = class {
          * @type {number|string|boolean|Spreadsheet._Expression|Spreadsheet._CellReference} Parsed formula
          */
         this.expression = undefined;
+        /**
+         * @type {string}
+         */
+        this.formula = "";
     }
 
 };
@@ -293,9 +330,9 @@ Spreadsheet._Function = Object.freeze({
      * @function
      */
     NOT(value) {
-        if (arguments.length !== 1) throw new QuantityOfArgumentsError(this.position);
+        if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof value === "boolean") return !value;
-        throw new ArgumentTypeError(this.position);
+        throw new Spreadsheet.ArgumentTypeError(this.position);
     },
 
     /**
@@ -305,8 +342,8 @@ Spreadsheet._Function = Object.freeze({
      * @function
      */
     AND(...values) {
-        if (values.length < 2) throw new QuantityOfArgumentsError(this.position);
-        if (values.some(e => typeof e !== "boolean")) throw new ArgumentTypeError(this.position);
+        if (values.length < 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        if (values.some(e => typeof e !== "boolean")) throw new Spreadsheet.ArgumentTypeError(this.position);
         return values.every(e => e);
     },
 
@@ -317,8 +354,8 @@ Spreadsheet._Function = Object.freeze({
      * @function
      */
     OR(...values) {
-        if (values.length < 2) throw new QuantityOfArgumentsError(this.position);
-        if (values.some(e => typeof e !== "boolean")) throw new ArgumentTypeError(this.position);
+        if (values.length < 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        if (values.some(e => typeof e !== "boolean")) throw new Spreadsheet.ArgumentTypeError(this.position);
         return values.some(e => e);
     },
 
@@ -329,8 +366,8 @@ Spreadsheet._Function = Object.freeze({
      * @function
      */
     CONCATENATE(...args) {
-        if (args.length === 0) throw new QuantityOfArgumentsError(this.position);
-        if (args.some(e => typeof e !== "string")) throw new ArgumentTypeError(this.position);
+        if (args.length === 0) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        if (args.some(e => typeof e !== "string")) throw new Spreadsheet.ArgumentTypeError(this.position);
         return args.join("");
     },
 
@@ -341,9 +378,9 @@ Spreadsheet._Function = Object.freeze({
      * @function
      */
     NUMBER(value) {
-        if (arguments.length !== 1) throw new QuantityOfArgumentsError(this.position);
+        if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (!isNaN(value)) return +value;
-        throw new ArgumentTypeError(this.position);
+        throw new Spreadsheet.ArgumentTypeError(this.position);
     },
 
     /**
@@ -353,7 +390,7 @@ Spreadsheet._Function = Object.freeze({
      * @function
      */
     BOOLEAN(value) {
-        if (arguments.length !== 1) throw new QuantityOfArgumentsError(this.position);
+        if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         return !(!value || value === "0" || (typeof value === "string" && value.toLowerCase() === "false"));
     },
 
@@ -364,7 +401,7 @@ Spreadsheet._Function = Object.freeze({
      * @function
      */
     STRING(value) {
-        if (arguments.length !== 1) throw new QuantityOfArgumentsError(this.position);
+        if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         switch (typeof value) {
             case "boolean":
                 return value ? "TRUE" : "FALSE";
@@ -383,8 +420,8 @@ Spreadsheet._Function = Object.freeze({
      * @function
      */
     ADD(a, b) {
-        if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
-        if (typeof a !== "number" || typeof b !== "number") throw new ArgumentTypeError(this.position);
+        if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        if (typeof a !== "number" || typeof b !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
         return a + b;
     },
 
@@ -397,8 +434,8 @@ Spreadsheet._Function = Object.freeze({
      * @function
      */
     SUBTRACT(a, b) {
-        if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
-        if (typeof a !== "number" || typeof b !== "number") throw new ArgumentTypeError(this.position);
+        if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        if (typeof a !== "number" || typeof b !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
         return a - b;
     },
 
@@ -409,8 +446,8 @@ Spreadsheet._Function = Object.freeze({
      * @function
      */
     NEGATE(a) {
-        if (arguments.length !== 1) throw new QuantityOfArgumentsError(this.position);
-        if (typeof a !== "number") throw new ArgumentTypeError(this.position);
+        if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        if (typeof a !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
         return -a;
     },
 
@@ -422,8 +459,8 @@ Spreadsheet._Function = Object.freeze({
      * @function
      */
     MULTIPLY(a, b) {
-        if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
-        if (typeof a !== "number" || typeof b !== "number") throw new ArgumentTypeError(this.position);
+        if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        if (typeof a !== "number" || typeof b !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
         return a * b;
     },
 
@@ -436,8 +473,8 @@ Spreadsheet._Function = Object.freeze({
      * @function
      */
     DIVIDE(a, b) {
-        if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
-        if (typeof a !== "number" || typeof b !== "number") throw new ArgumentTypeError(this.position);
+        if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        if (typeof a !== "number" || typeof b !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
         return a / b;
     },
 
@@ -449,8 +486,8 @@ Spreadsheet._Function = Object.freeze({
      * @function
      */
     EQUALS(a, b) {
-        if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
-        if (typeof a !== typeof b) throw new ArgumentTypeError(this.position);
+        if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        if (typeof a !== typeof b) throw new Spreadsheet.ArgumentTypeError(this.position);
         return a == b;
     },
 
@@ -462,8 +499,8 @@ Spreadsheet._Function = Object.freeze({
      * @function
      */
     GREATER(a, b) {
-        if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
-        if (typeof a !== typeof b || typeof a === "boolean") throw new ArgumentTypeError(this.position);
+        if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        if (typeof a !== typeof b || typeof a === "boolean") throw new Spreadsheet.ArgumentTypeError(this.position);
         return a > b;
     },
 
@@ -475,8 +512,8 @@ Spreadsheet._Function = Object.freeze({
      * @function
      */
     LESSOREQUALS(a, b) {
-        if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
-        if (typeof a !== typeof b || typeof a === "boolean") throw new ArgumentTypeError(this.position);
+        if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        if (typeof a !== typeof b || typeof a === "boolean") throw new Spreadsheet.ArgumentTypeError(this.position);
         return a <= b;
     },
 
@@ -488,8 +525,8 @@ Spreadsheet._Function = Object.freeze({
      * @function
      */
     LESS(a, b) {
-        if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
-        if (typeof a !== typeof b || typeof a === "boolean") throw new ArgumentTypeError(this.position);
+        if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        if (typeof a !== typeof b || typeof a === "boolean") throw new Spreadsheet.ArgumentTypeError(this.position);
         return a < b;
     },
 
@@ -501,8 +538,8 @@ Spreadsheet._Function = Object.freeze({
      * @function
      */
     GREATEROREQUALS(a, b) {
-        if (arguments.length !== 2) throw new QuantityOfArgumentsError(this.position);
-        if (typeof a !== typeof b || typeof a === "boolean") throw new ArgumentTypeError(this.position);
+        if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        if (typeof a !== typeof b || typeof a === "boolean") throw new Spreadsheet.ArgumentTypeError(this.position);
         return a >= b;
     }
 
@@ -525,9 +562,13 @@ Spreadsheet._CellReference = class {
         }
          const column = (+cell.slice(i)) - 1;
         /**
-         * @type {Spreadsheet._Cell}
+         * @type {int}
          */
-        this.cell = Spreadsheet.cells[row][column];
+        this.row = row;
+        /**
+         * @type {int}
+         */
+        this.column = column;
         /**
          * @type {boolean}
          */
@@ -558,22 +599,21 @@ Spreadsheet._Expression = class {
     }
     /**
      * Evaluates formula in the cell
-     * @function
+     * @param {Spreadsheet} spreadsheet
      * @returns {number|string|boolean} new cell value
      * @throws {Spreadsheet.FormulaDependencyOnEmptyCellError}
      * @see Spreadsheet._CellReference.check
      *
      */
-    evaluate() {
+    evaluate(spreadsheet) {
         const newArgs = this.args.map((elem)=>{
             if (elem instanceof Spreadsheet._Expression) {
-                return elem.evaluate();
+                return elem.evaluate(spreadsheet);
             } else if (elem instanceof Spreadsheet._CellReference) {
-                const value = elem.cell.value;
-                if (typeof value === "undefined" || value === null) {
-                    throw new Spreadsheet.FormulaDependencyOnEmptyCellError(this.args[i], this.position);
+                if (!spreadsheet._cellExists(elem.row, elem.column) || spreadsheet.cells[elem.row][elem.column].value == null) {
+                    throw new Spreadsheet.FormulaDependencyOnEmptyCellError(this.position);
                 }
-                return elem.cell.value;
+                return spreadsheet.cells[elem.row][elem.column].value;
             } else {
                 return elem;
             }
@@ -1151,7 +1191,7 @@ Spreadsheet._CellGraph = class {
      * @method
      */
     addEdge(vertex1, vertex2) {
-        vertex1.edges.push(vertex2);
+        if (vertex1.edges.indexOf(vertex2) === -1) vertex1.edges.push(vertex2);
     }
     /**
      * Finds all the vertices that are in cycle with the "vertex" in @param;
@@ -1168,6 +1208,13 @@ Spreadsheet._CellGraph = class {
         let ret = vertex.cycle;
         vertex.cycle = [];
         return ret;
+    }
+
+    getVertexByCoordinates(row, column) {
+        for(let vertex of this.vertices) if(vertex.row === row && vertex.column === column) return vertex;
+        const vertex = new Spreadsheet._CellGraph.Vertex(row, column);
+        this.vertices.push(vertex);
+        return vertex;
     }
 
     /**

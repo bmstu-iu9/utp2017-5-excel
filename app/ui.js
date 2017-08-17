@@ -98,7 +98,7 @@ const ui = {
                     const startLocation = getLocationOf(event.target);
                     ui.selection.set(startLocation, startLocation);
                     const formula = ui.spreadsheet.getFormula(startLocation.row, startLocation.column);
-                    formulaInput.textContent = formula && "=" + formula;
+                    setTimeout(() => formulaInput.textContent = formula && "=" + formula, 1);
                     const error = event.target.getAttribute("data-error");
                     formulaError.textContent = error || "";
                     const setSelection = event => {
@@ -136,6 +136,7 @@ const ui = {
                 if (!cellEdited) return;
                 ui._setCellText(cellEdited, "");
                 let formulaText = formulaInput.textContent.trim();
+                console.log(formulaText);
                 if (formulaText.charAt(0) !== "=") {
                     // If text in the formula input does not represent a number or a boolean, converting it to string literal
                     if (formulaText.length && isNaN(formulaText) && formulaText !== "TRUE" && formulaText !== "FALSE") {
@@ -146,9 +147,10 @@ const ui = {
                     ui.spreadsheet.setFormula(cellEdited.row, cellEdited.column, formulaText);
                 } catch (error) {
                     if (error instanceof Spreadsheet.FormulaError) {
-
+                        ui._setError(new ui.CellLocation(cellEdited.row, cellEdited.column), error.toString());
                     } else console.log(error);
                 }
+                cellEdited = null;
             };
             formulaInput.addEventListener("keyup", event => {
                 if (event.code === "Enter") {
