@@ -52,13 +52,42 @@ document.addEventListener("DOMContentLoaded", () => {
     </li>
     <li>
         <div class="controls-group">
+            <div class="dropdown-wrap">
+                <div class="toggle requires-selection disabled dropdown-toggle select-toggle">Open Sans</div>
+                <ul class="dropdown select" id="font-family">
+                    <li data-value="Open Sans">Open Sans</li>
+                    <li data-value="Arial" style="font-family: Arial;">Arial</li>
+                    <li data-value="Calibri" style="font-family: Calibri;">Calibri</li>
+                    <li data-value="Cambria" style="font-family: Cambria;">Cambria</li>
+                    <li data-value="Segoe UI" style="font-family: 'Segoe UI';">Segoe UI</li>
+                    <li data-value="Times New Roman" style="font-family: 'Times New Roman';">Times New Roman</li>
+                    <li data-value="Tahoma" style="font-family: Tahoma;">Tahoma</li>
+                    <li data-value="Verdana" style="font-family: Verdana;">Verdana</li>
+                </ul>
+            </div>
+            <div class="dropdown-wrap">
+                <div class="toggle requires-selection disabled dropdown-toggle select-toggle">12 pt</div>
+                <ul class="dropdown select" id="font-size">
+                    <li data-value="8">8 pt</li>
+                    <li data-value="9">9 pt</li>
+                    <li data-value="10">10 pt</li>
+                    <li data-value="11">11 pt</li>
+                    <li data-value="12">12 pt</li>
+                    <li data-value="14">14 pt</li>
+                    <li data-value="16">16 pt</li>
+                    <li data-value="18">18 pt</li>
+                    <li data-value="20">20 pt</li>
+                    <li data-value="24">24 pt</li>
+                    <li data-value="36">36 pt</li>
+                </ul>
+            </div>
             <div class="icon toggle requires-selection disabled material-icons" id="bold">format_bold</div>
             <div class="icon toggle requires-selection disabled material-icons" id="italic">format_italic</div>
             <div class="icon toggle requires-selection disabled material-icons" id="underlined">format_underlined</div>
             <div class="dropdown-wrap">
                 <div class="icon toggle requires-selection disabled dropdown-toggle color-picker material-icons">format_color_text</div>
-                <ul class="dropdown color" id="color-text"> <!-- We need a real color palette here -->
-                    <li style="background-color: #FFF;" class="selected"></li>
+                <ul class="dropdown color" id="color-text">
+                    <li style="background-color: #FFF;"></li>
                     <li style="background-color: #EBEBEB;"></li>
                     <li style="background-color: #D2D2D2;"></li>
                     <li style="background-color: #BBBBBB;"></li>
@@ -146,8 +175,8 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="controls-group">
             <div class="dropdown-wrap">
                 <div class="icon toggle requires-selection disabled dropdown-toggle color-picker material-icons">format_color_fill</div>
-                <ul class="dropdown color" id="color-fill"> <!-- We need a real color palette here -->
-                    <li style="background-color: #FFF;" class="selected"></li>
+                <ul class="dropdown color" id="color-fill">
+                    <li style="background-color: #FFF;"></li>
                     <li style="background-color: #EBEBEB;"></li>
                     <li style="background-color: #D2D2D2;"></li>
                     <li style="background-color: #BBBBBB;"></li>
@@ -227,8 +256,8 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
             <div class="dropdown-wrap">
                 <div class="icon toggle dropdown-toggle color-picker material-icons">border_color</div>
-                <ul class="dropdown color" id="color-border"> <!-- We need a real color palette here -->
-                    <li style="background-color: #FFF;" class="selected"></li>
+                <ul class="dropdown color" id="color-border">
+                    <li style="background-color: #FFF;"></li>
                     <li style="background-color: #EBEBEB;"></li>
                     <li style="background-color: #D2D2D2;"></li>
                     <li style="background-color: #BBBBBB;"></li>
@@ -308,7 +337,7 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
             <div class="dropdown-wrap">
                 <div class="toggle dropdown-toggle select-toggle">No borders</div>
-                <ul class="dropdown select" id="border-width"> <!-- We need a real color palette here -->
+                <ul class="dropdown select" id="border-width">
                     <li data-value="0" class="selected">No borders</li>
                     <li data-value="1">1 px</li>
                     <li data-value="2">2 px</li>

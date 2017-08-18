@@ -64,6 +64,12 @@ const ui = {
                     const apply = event => {
                         if (isDraggerVertical) {
                             cell.style.width = cell.style.minWidth = Math.max(CELL_MIN_WIDTH, event.clientX - rect.left) + "px";
+                            // Updating cell content
+                            const index = Array.prototype.indexOf.call(cell.parentElement.children, cell);
+                            console.log(index);
+                            document.querySelectorAll("#table tr").forEach(row =>
+                                !row.children[1].classList.contains("column-header") &&
+                                    ui._updateCellText(row.children[index]));
                         } else {
                             cell.style.height = Math.max(CELL_MIN_HEIGHT, event.clientY - rect.top) + "px";
                         }
@@ -136,7 +142,6 @@ const ui = {
                 if (!cellEdited) return;
                 ui._setCellText(cellEdited, "");
                 let formulaText = formulaInput.textContent.trim();
-                console.log(formulaText);
                 if (formulaText.charAt(0) !== "=") {
                     // If text in the formula input does not represent a number or a boolean, converting it to string literal
                     if (formulaText.length && isNaN(formulaText) && formulaText !== "TRUE" && formulaText !== "FALSE") {
@@ -171,6 +176,23 @@ const ui = {
                 formulaInput.textContent = formulaInput.textContent.replace(/\xa0/g, " ");
                 ui._moveFormulaInputCaretToEnd();
             }, 1));
+            // Moving selection with Tab and Shift+Tab
+            document.addEventListener("keydown", event => {
+                if (event.code === "Tab" && ui.selection.exists) {
+                    const direction = event.shiftKey ? -1 : 1;
+                    const location = new ui.CellLocation(ui.selection.start.row, ui.selection.start.column + direction);
+                    const cell = ui._getCellByLocation(location);
+                    if (location.column >= 0 && cell) {
+                        const mouse = document.createEvent("MouseEvents");
+                        mouse.initEvent("mousedown", true, true);
+                        cell.dispatchEvent(mouse);
+                        mouse.initEvent("mouseup", true, true);
+                        cell.dispatchEvent(mouse);
+                    }
+                    if (document.activeElement === formulaInput) formulaInput.blur();
+                    event.preventDefault();
+                }
+            });
         }
 
         { // Defining logic of custom input elements
@@ -199,12 +221,12 @@ const ui = {
                     element.classList.add("active");
                     element.dispatchEvent(new CustomEvent("activate"));
                 } else if (element.matches(".dropdown > li")) {
-                    if(element.classList.contains("selected")) return;
                     const dropdown = element.parentElement;
                     Array.prototype.forEach.call(dropdown.children, element => element.classList.remove("selected"));
                     element.classList.add("selected");
                     const text = element.textContent;
                     if (text) dropdown.previousElementSibling.textContent = element.textContent;
+                    dropdown.previousElementSibling.classList.remove("ambiguous");
                     dropdown.dispatchEvent(new CustomEvent("change", {detail: {
                         value: dropdown.classList.contains("color") ?
                             element.style.backgroundColor : element.getAttribute("data-value")
@@ -218,6 +240,12 @@ const ui = {
 
         // Applying format
         {
+            document.getElementById("font-family").addEventListener("change", event => {
+                ui.selection.forEachCell(cell => cell.style.fontFamily = "'" + event.detail.value + "'");
+            });
+            document.getElementById("font-size").addEventListener("change", event => {
+                ui.selection.forEachCell(cell => cell.style.fontSize = event.detail.value + "pt");
+            });
             document.getElementById("bold").addEventListener("change", event => {
                 ui.selection.forEachCell(cell => cell.style.fontWeight = event.detail.value ? "bold" : "");
             });
@@ -442,7 +470,7 @@ const ui = {
      */
     _updateCellText(cell) {
         const value = cell.getAttribute("data-value");
-        if (value.length < 2) {
+        if (!value || value.length < 2) {
             cell.textContent = value;
             return;
         }
@@ -517,6 +545,30 @@ const ui = {
 
         document.getElementById("formula").contentEditable = true;
         document.querySelectorAll(".requires-selection").forEach(element => element.classList.remove("disabled"));
+
+        let fontFamily = null;
+        ui.selection.forEachCell(cell => fontFamily = fontFamily === null ? cell.style.fontFamily || "\"Open Sans\"" :
+                fontFamily === "default" ? "default" :
+                fontFamily === (cell.style.fontFamily || "\"Open Sans\"") ? fontFamily : "default");
+        const fontFamilySelect = document.getElementById("font-family");
+        if (fontFamily === "default") {
+            fontFamilySelect.previousElementSibling.classList.add("ambiguous");
+        } else {
+            fontFamilySelect.previousElementSibling.classList.remove("ambiguous");
+            fontFamilySelect.previousElementSibling.textContent = fontFamily.replace(/"/g, "");
+        }
+
+        let fontSize = null;
+        ui.selection.forEachCell(cell => fontSize = fontSize === null ? cell.style.fontSize || "12pt" :
+                fontSize === "default" ? "default" :
+                fontSize === (cell.style.fontSize || "12pt") ? fontSize : "default");
+        const fontSizeSelect = document.getElementById("font-size");
+        if (fontSize === "default") {
+            fontSizeSelect.previousElementSibling.classList.add("ambiguous");
+        } else {
+            fontSizeSelect.previousElementSibling.classList.remove("ambiguous");
+            fontSizeSelect.previousElementSibling.textContent = fontSize;
+        }
 
         document.getElementById("bold").classList[
             ui.selection.everyCell(cell => cell.style.fontWeight === "bold") ? "add" : "remove"
