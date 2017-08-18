@@ -198,7 +198,6 @@ const Spreadsheet = class extends EventManager {
         });
 
     }
-
     /**
      * Converts to CSV format
      * @returns {string} CSV
@@ -211,7 +210,7 @@ const Spreadsheet = class extends EventManager {
             for(let cell of cells){
                 switch(typeof(cell.value)){
                     case "string":
-                        csv += cell.value.indexOf("\"") == -1 ? cell.value + "," : "\"" + cell.value.replace(/"/g, "\"\"") + "\"";
+                        csv += (cell.value.search(/,|"/) == -1 ? cell.value : "\"" + cell.value.replace(/"/g, "\"\"") + "\"") + ",";
                         break;
                     case "boolean":
                         csv += cell.value ? "TRUE" : "FALSE";
@@ -229,6 +228,23 @@ const Spreadsheet = class extends EventManager {
 
         csv = csv.slice(0,-1);
         return csv;
+    }
+
+    /**
+     * Converts from CSV format
+     * @param {string} csv
+     * @returns {Spreadsheet} spreadsheet filled with values
+     */
+    static fromCSV(csv){
+
+        var spreadsheet = new Spreadsheet();
+
+        const rows = csv.split(/\r\n|\r|\n/).length;
+        const cols = (csv.split(/\r\n|\r|\n/)[0].match(/,/g) || []).length + 1;
+
+        spreadsheet._expandTo(rows, cols);
+
+        return spreadsheet;
     }
 
 };
@@ -809,18 +825,18 @@ Spreadsheet._Token = class {
                 break;
             case '\"':
                 while (true) {
-            		if (this.follow.getCharCode() === -5) throw new Spreadsheet.FormulaError(`Could not find end of string`, this.follow.index+1); 
-            		if (String.fromCodePoint(this.follow.getCharCode()) === "\"") break;
-            		if (String.fromCodePoint(this.follow.getCharCode()) === "\\" && this.follow.skip(this).getCharCode() !== -5) {
-            			this.follow = this.follow.skip(this);
-            			this.body += String.fromCodePoint(this.follow.getCharCode())
-            			this.follow = this.follow.skip(this);
-            			continue;
-            		}
-            		this.body += String.fromCodePoint(this.follow.getCharCode())
-            		this.follow = this.follow.skip(this);
-            	}
-            	this.follow = this.follow.skip(this);
+                    if (this.follow.getCharCode() === -5) throw new Spreadsheet.FormulaError(`Could not find end of string`, this.follow.index+1); 
+                    if (String.fromCodePoint(this.follow.getCharCode()) === "\"") break;
+                    if (String.fromCodePoint(this.follow.getCharCode()) === "\\" && this.follow.skip(this).getCharCode() !== -5) {
+                        this.follow = this.follow.skip(this);
+                        this.body += String.fromCodePoint(this.follow.getCharCode())
+                        this.follow = this.follow.skip(this);
+                        continue;
+                    }
+                    this.body += String.fromCodePoint(this.follow.getCharCode())
+                    this.follow = this.follow.skip(this);
+                }
+                this.follow = this.follow.skip(this);
                 let startIndex = this.start.index;
                 let endIndex = this.follow.index;
                 this.tag = Spreadsheet._Token.Tag.STRING;
