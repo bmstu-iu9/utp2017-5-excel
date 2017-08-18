@@ -665,7 +665,7 @@ Spreadsheet._Expression = class {
                 return elem.evaluate(spreadsheet);
             } else if (elem instanceof Spreadsheet._CellReference) {
                 if (!spreadsheet._cellExists(elem.row, elem.column) || spreadsheet.cells[elem.row][elem.column].value == null) {
-                    throw new Spreadsheet.FormulaDependencyOnEmptyCellError(this.position);
+                    throw new Spreadsheet.FormulaDependencyOnEmptyCellError(elem.position);
                 }
                 return spreadsheet.cells[elem.row][elem.column].value;
             } else {
@@ -715,10 +715,7 @@ Spreadsheet._Position = class {
      */
     satisfies(p) {
         const code = this.getCharCode();
-        if (code !== -5) {
-            return String.fromCodePoint(code).match(p) !== null
-        }
-        return false
+        return code === -5 ? false : p.test(String.fromCodePoint(code))
     }
 
     /**
@@ -729,10 +726,7 @@ Spreadsheet._Position = class {
     skipWithBody(t) {
         const code = this.getCharCode();
         t.body+= String.fromCharCode(code);
-        if (code === -5) {
-            return this;
-        }
-        return new Spreadsheet._Position(this.formula, this.index + (code > 0xFFFF ? 2 : 1));
+        return code === -5 ? this : new Spreadsheet._Position(this.formula, this.index + 1);
     }
 
 
@@ -742,10 +736,7 @@ Spreadsheet._Position = class {
      */
     skip() {
         const code = this.getCharCode();
-        if (code === -5) {
-            return this;
-        }
-        return new Spreadsheet._Position(this.formula, this.index + (code > 0xFFFF ? 2 : 1));
+        return code === -5 ? this : new Spreadsheet._Position(this.formula, this.index + 1);
     }
 
     /**
@@ -1166,16 +1157,16 @@ Spreadsheet._Parser = class {
         const index = this.token.start.index;
         const callArgs = this.parseCall();
         if (callArgs === null) {
-            if (res.match(/[a-zA-Z]+[0-9]+/i) !== null) {
+            if (/^[a-z]+[1-9][0-9]*$/i.test(res)) {
             	return new Spreadsheet._CellReference(res, currentPosition.index + 1);
             } else {
-            	throw new Spreadsheet.FormulaError(`Unexpected Identifier`, index + 1 - res.length);
+            	throw new Spreadsheet.FormulaError(`'(' expected`, index + 1 - res.length);
             }
         } else {
             if (Spreadsheet._Function.hasOwnProperty(res)) {
             	return new Spreadsheet._Expression(Spreadsheet._Function[res], callArgs, currentPosition);
             } else {
-            	throw new Spreadsheet.FormulaError(`Unexpected Identifier`, index + 1 - res.length);
+            	throw new Spreadsheet.FormulaError(`Undefined function '${res}'`, index + 1 - res.length);
             }
         }
     }
@@ -1406,13 +1397,3 @@ Spreadsheet._CellGraph.Vertex = class {
         if (this.cycle.indexOf(this) === -1) this.cycle.push(this);
     }
 };
-
-
-
-
-
-
-
-
-
-
