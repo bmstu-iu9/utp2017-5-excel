@@ -169,12 +169,7 @@ const ui = {
             // Preventing pasting of formatted text into the input
             formulaInput.addEventListener("paste", () => setTimeout(() => {
                 formulaInput.textContent = formulaInput.textContent.replace(/\xa0/g, " ");
-                const range = document.createRange();
-                range.selectNodeContents(formulaInput);
-                range.collapse(false);
-                const selection = window.getSelection();
-                selection.removeAllRanges();
-                selection.addRange(range);
+                ui._moveFormulaInputCaretToEnd();
             }, 1));
         }
 
@@ -349,6 +344,7 @@ const ui = {
         spreadsheet.addEventListener(Spreadsheet.Event.CELL_FORMULA_UPDATED, (row, column, formula) => {
             if(ui.selection.exists() && row === ui.selection.start.row && column === ui.selection.start.column) {
                 document.getElementById("formula").textContent = "=" + formula;
+                ui._moveFormulaInputCaretToEnd();
             }
         });
 
@@ -496,6 +492,21 @@ const ui = {
         }
         else cell.classList.remove("error");
         cell.setAttribute("data-error", text);
+    },
+
+    /**
+     * Moves caret in focused formula field to the end
+     * @private
+     */
+    _moveFormulaInputCaretToEnd() {
+        const formulaInput = document.getElementById("formula");
+        if(formulaInput !== document.activeElement) return;
+        const range = document.createRange();
+        range.selectNodeContents(formulaInput);
+        range.collapse(false);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
     },
 
     /**

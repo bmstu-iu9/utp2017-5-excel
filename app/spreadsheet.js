@@ -157,6 +157,7 @@ const Spreadsheet = class extends EventManager {
 
         this._expandTo(i + 1, j + 1);
         this.cells[i][j].formula = formula;
+        this.triggerEvent(Spreadsheet.Event.CELL_FORMULA_UPDATED, i, j, formula);
 
         const parser = new Spreadsheet._Parser(formula);
         const expression = this.cells[i][j].expression = parser.parse();
@@ -165,8 +166,8 @@ const Spreadsheet = class extends EventManager {
         this.graph.detachVertex(vertex);
         const lookThroughExpression = expression => {
             if (expression instanceof Spreadsheet._CellReference) {
-                const topVertex = this.graph.getVertexByCoordinates(expression.row, expression.row);
-                this.graph.addEdge(vertex, topVertex);
+                const topVertex = this.graph.getVertexByCoordinates(expression.row, expression.column);
+                this.graph.addEdge(topVertex, vertex);
             } else if (expression instanceof Spreadsheet._Expression) {
                 expression.args.forEach(expression => lookThroughExpression(expression));
             }
@@ -585,14 +586,19 @@ Spreadsheet._CellReference = class {
     /**
      * @constructor
      * @param {String} cell name, letter/s + number/s
+     * @param {int} position
      */
-    constructor(cell) {
+    constructor(cell, position) {
         let column = 0;
         let i = 0;
         for (; cell.charCodeAt(i) > 64;  i++) {
             column += (cell.charCodeAt(i) - 65) + 26 * i;
         }
         const row = (+cell.slice(i)) - 1;
+        /**
+         * @type {int}
+         */
+        this.position = position;
         /**
          * @type {int}
          */
@@ -1144,7 +1150,7 @@ Spreadsheet._Parser = class {
         const callArgs = this.parseCall();
         if (callArgs === null) {
             console.log(res);
-            return new Spreadsheet._CellReference(res);
+            return new Spreadsheet._CellReference(res, currentPosition.index + 1);
         } else {
             console.log(res);
             return new Spreadsheet._Expression(Spreadsheet._Function[res], callArgs, currentPosition);
