@@ -214,6 +214,9 @@ const ui = {
                         value: dropdown.classList.contains("color") ?
                             element.style.backgroundColor : element.getAttribute("data-value")
                     }}));
+                    hideDropdowns();
+                } else if (element.matches(".dropdown")) {
+                    event.stopPropagation();
                 }
             });
         }

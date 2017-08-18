@@ -141,11 +141,11 @@ ul, ol {
     transition: background 0.135s ease; }
   #toolbar > li.active .switch:not(.disabled):not(.active):hover {
     background: rgba(0, 0, 0, 0.05); }
-  #toolbar > li.active button:not(.disabled) {
+  #toolbar > li.active .button:not(.disabled) {
     transition: background 0.135s ease; }
-  #toolbar > li.active button:not(.disabled):hover {
+  #toolbar > li.active .button:not(.disabled):hover {
     background: rgba(0, 0, 0, 0.05); }
-  #toolbar > li.active button:not(.disabled):active {
+  #toolbar > li.active .button:not(.disabled):active {
     transition: background 0s;
     background: rgba(0, 0, 0, 0.09); }
   #toolbar > li.active .toggle.active, #toolbar > li.active .switch.active {

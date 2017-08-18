@@ -162,7 +162,7 @@ $blocks-spacing: 15px;
     }
     @include control-hover-light(".toggle:not(.disabled):not(.active)");
     @include control-hover-light(".switch:not(.disabled):not(.active)");
-    @include control-hover-active-light("button:not(.disabled)");
+    @include control-hover-active-light(".button:not(.disabled)");
     .toggle.active, .switch.active {
         background: #C8C8C8;
     }
