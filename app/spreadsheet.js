@@ -799,10 +799,21 @@ Spreadsheet._Token = class {
                 this.tag = Spreadsheet._Token.Tag.EQUALS;
                 break;
             case '\"':
-                while (this.follow.getCharCode() !== -5 && String.fromCodePoint(this.follow.getCharCode()) !== "\"") {
-                    this.follow = this.follow.skip(this);
-                }
-                this.follow = this.follow.skip();
+                while (true) {
+            		if (this.follow.getCharCode() === -5) throw new Spreadsheet.FormulaError(`Could not find end of string`, this.follow.index+1); 
+            		if (String.fromCodePoint(this.follow.getCharCode()) === "\"") break;
+            		if (String.fromCodePoint(this.follow.getCharCode()) === "\\" && this.follow.skip(this).getCharCode() !== -5) {
+            			this.follow = this.follow.skip(this);
+            			this.body += String.fromCodePoint(this.follow.getCharCode())
+            			this.follow = this.follow.skip(this);
+            			continue;
+            		}
+            		this.body += String.fromCodePoint(this.follow.getCharCode())
+            		this.follow = this.follow.skip(this);
+            	}
+            	this.follow = this.follow.skip(this);
+                let startIndex = this.start.index;
+                let endIndex = this.follow.index;
                 this.tag = Spreadsheet._Token.Tag.STRING;
                 break;
             case '<':
