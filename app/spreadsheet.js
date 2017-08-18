@@ -198,6 +198,35 @@ const Spreadsheet = class extends EventManager {
 
     }
 
+    /**
+     * Converts to CSV format
+     * @returns {string} CSV
+     */
+    toCSV(){
+
+        var CSV = "";
+
+        for(let cells of this.cells){
+            for(let cell of cells){
+                switch(typeof(cell.value)){
+                    case "string":
+                        CSV += cell.value + ",";
+                        break;
+                    case "undefined":
+                        CSV += ",";
+                        break;
+                    default:
+                        CSV += cell.value.toString() + ",";
+                }
+            }
+            CSV = CSV.slice(0,-1);
+            CSV += '\n';
+        }
+
+        CSV = CSV.slice(0,-1);
+        return CSV;
+    }
+
 };
 
 /**
@@ -560,7 +589,7 @@ Spreadsheet._CellReference = class {
         for (; cell.charCodeAt(i) > 64;  i++) {
             column += (cell.charCodeAt(i) - 65) + 26 * i;
         }
-         const row = (+cell.slice(i)) - 1;
+        const row = (+cell.slice(i)) - 1;
         /**
          * @type {int}
          */
@@ -899,7 +928,7 @@ Spreadsheet._Parser = class {
      * Parses formula
      */
     parse() {
-    	if (this.token.tag === Spreadsheet._Token.Tag.END_OF_TEXT) return undefined;
+        if (this.token.tag === Spreadsheet._Token.Tag.END_OF_TEXT) return undefined;
         const res = this.parseExpression();
         this.expect(Spreadsheet._Token.Tag.END_OF_TEXT);
         return res;
