@@ -1163,13 +1163,20 @@ Spreadsheet._Parser = class {
         const res = this.token.body;
         console.log("< Identifiable> :== IDENTIFIER <Call>");
         this.expect(Spreadsheet._Token.Tag.IDENTIFIER);
+        const index = this.token.start.index;
         const callArgs = this.parseCall();
         if (callArgs === null) {
-            console.log(res);
-            return new Spreadsheet._CellReference(res, currentPosition.index + 1);
+            if (res.match(/[a-zA-Z]+[0-9]+/i) !== null) {
+            	return new Spreadsheet._CellReference(res, currentPosition.index + 1);
+            } else {
+            	throw new Spreadsheet.FormulaError(`Unexpected Identifier`, index + 1 - res.length);
+            }
         } else {
-            console.log(res);
-            return new Spreadsheet._Expression(Spreadsheet._Function[res], callArgs, currentPosition);
+            if (Spreadsheet._Function.hasOwnProperty(res)) {
+            	return new Spreadsheet._Expression(Spreadsheet._Function[res], callArgs, currentPosition);
+            } else {
+            	throw new Spreadsheet.FormulaError(`Unexpected Identifier`, index + 1 - res.length);
+            }
         }
     }
 
