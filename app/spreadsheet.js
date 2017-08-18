@@ -770,7 +770,7 @@ Spreadsheet._Token = class {
          * @type {string} This token's body: identifier or cell name if present.
          */
         this.body = "";
-        while (this.start.getCharCode() !== -5 && String.fromCodePoint(this.start.getCharCode()) === ' ') {
+        while (this.start.getCharCode() !== -5 && (this.start.getCharCode() === 32 || this.start.getCharCode() === 160)) {
             this.start = this.start.skip();
         }
         /**
