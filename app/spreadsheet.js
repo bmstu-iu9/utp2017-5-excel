@@ -555,12 +555,12 @@ Spreadsheet._CellReference = class {
      * @param {String} cell name, letter/s + number/s
      */
     constructor(cell) {
-        let row = 0;
+        let column = 0;
         let i = 0;
         for (; cell.charCodeAt(i) > 64;  i++) {
-            row += (cell.charCodeAt(i) - 65) + 26 * i;
+            column += (cell.charCodeAt(i) - 65) + 26 * i;
         }
-         const column = (+cell.slice(i)) - 1;
+         const row = (+cell.slice(i)) - 1;
         /**
          * @type {int}
          */
