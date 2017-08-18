@@ -98,7 +98,7 @@ const ui = {
                     const startLocation = getLocationOf(event.target);
                     ui.selection.set(startLocation, startLocation);
                     const formula = ui.spreadsheet.getFormula(startLocation.row, startLocation.column);
-                    formulaInput.textContent = formula && "=" + formula;
+                    setTimeout(() => formulaInput.textContent = formula && "=" + formula, 1);
                     const error = event.target.getAttribute("data-error");
                     formulaError.textContent = error || "";
                     const setSelection = event => {
@@ -133,8 +133,10 @@ const ui = {
                 }
             });
             const applyFormula = () => {
+                if (!cellEdited) return;
                 ui._setCellText(cellEdited, "");
                 let formulaText = formulaInput.textContent.trim();
+                console.log(formulaText);
                 if (formulaText.charAt(0) !== "=") {
                     // If text in the formula input does not represent a number or a boolean, converting it to string literal
                     if (formulaText.length && isNaN(formulaText) && formulaText !== "TRUE" && formulaText !== "FALSE") {
@@ -145,9 +147,10 @@ const ui = {
                     ui.spreadsheet.setFormula(cellEdited.row, cellEdited.column, formulaText);
                 } catch (error) {
                     if (error instanceof Spreadsheet.FormulaError) {
-
+                        ui._setError(new ui.CellLocation(cellEdited.row, cellEdited.column), error.toString());
                     } else console.log(error);
                 }
+                cellEdited = null;
             };
             formulaInput.addEventListener("keyup", event => {
                 if (event.code === "Enter") {
@@ -166,13 +169,144 @@ const ui = {
             // Preventing pasting of formatted text into the input
             formulaInput.addEventListener("paste", () => setTimeout(() => {
                 formulaInput.textContent = formulaInput.textContent.replace(/\xa0/g, " ");
-                const range = document.createRange();
-                range.selectNodeContents(formulaInput);
-                range.collapse(false);
-                const selection = window.getSelection();
-                selection.removeAllRanges();
-                selection.addRange(range);
+                ui._moveFormulaInputCaretToEnd();
             }, 1));
+        }
+
+        { // Defining logic of custom input elements
+            const hideDropdowns = exclude => {
+                const toggles = document.querySelectorAll("#toolbar .dropdown-toggle.active");
+                if (toggles) toggles.forEach(toggle => toggle !== exclude && toggle.classList.remove("active"));
+            };
+            document.addEventListener("click", hideDropdowns);
+            document.getElementById("toolbar").addEventListener("click", event => {
+                const element = event.target;
+                if (element.classList.contains("disabled")) return;
+                if (element.classList.contains("dropdown-toggle")) {
+                    hideDropdowns(element);
+                    element.classList.toggle("active");
+                    event.stopPropagation();
+                } else if (element.classList.contains("toggle")) {
+                    element.classList.toggle("active");
+                    element.dispatchEvent(new CustomEvent("change", {detail: {
+                        value: element.classList.contains("active")
+                    }}));
+                } else if (element.classList.contains("switch")) {
+                    if(element.classList.contains("active")) return;
+                    const group = element.getAttribute("data-group");
+                    document.querySelectorAll(`.switch[data-group="${group}"]`)
+                        .forEach(element => element.classList.remove("active"));
+                    element.classList.add("active");
+                    element.dispatchEvent(new CustomEvent("activate"));
+                } else if (element.matches(".dropdown > li")) {
+                    if(element.classList.contains("selected")) return;
+                    const dropdown = element.parentElement;
+                    Array.prototype.forEach.call(dropdown.children, element => element.classList.remove("selected"));
+                    element.classList.add("selected");
+                    const text = element.textContent;
+                    if (text) dropdown.previousElementSibling.textContent = element.textContent;
+                    dropdown.dispatchEvent(new CustomEvent("change", {detail: {
+                        value: dropdown.classList.contains("color") ?
+                            element.style.backgroundColor : element.getAttribute("data-value")
+                    }}));
+                    hideDropdowns();
+                } else if (element.matches(".dropdown")) {
+                    event.stopPropagation();
+                }
+            });
+        }
+
+        // Applying format
+        {
+            document.getElementById("bold").addEventListener("change", event => {
+                ui.selection.forEachCell(cell => cell.style.fontWeight = event.detail.value ? "bold" : "");
+            });
+            document.getElementById("italic").addEventListener("change", event => {
+                ui.selection.forEachCell(cell => cell.style.fontStyle = event.detail.value ? "italic" : "");
+            });
+            document.getElementById("underlined").addEventListener("change", event => {
+                ui.selection.forEachCell(cell => cell.style.textDecoration = event.detail.value ? "underline" : "");
+            });
+            document.getElementById("color-text").addEventListener("change", event => {
+                ui.selection.forEachCell(cell => cell.style.color = event.detail.value);
+            });
+            ["left", "center", "right", "justify"].forEach(value =>
+                document.getElementById("align-" + value).addEventListener("activate", () => {
+                    ui.selection.forEachCell(cell => cell.style.textAlign = value);
+                }));
+            document.getElementById("color-fill").addEventListener("change", event => {
+                ui.selection.forEachCell(cell => cell.style.backgroundColor = event.detail.value);
+            });
+            const getBorderWidth = () =>
+                document.querySelector("#border-width .selected").getAttribute("data-value") + "px";
+            const getBorderColor = () =>
+                document.querySelector("#color-border .selected").style.backgroundColor;
+            const getBorder = () => getBorderWidth() + " solid " + getBorderColor();
+            document.getElementById("border-top").addEventListener("click", event => {
+                if (event.target.classList.contains("disabled")) return;
+                ui.selection.forEachCell((cell, i, j, row, column) => {
+                    if (!i) ui._getCellByCoordinates(row - 1, column).style.borderBottom = getBorder();
+                });
+            });
+            document.getElementById("border-right").addEventListener("click", event => {
+                if (event.target.classList.contains("disabled")) return;
+                ui.selection.forEachCell((cell, i, j) =>
+                    j === ui.selection.width() && (cell.style.borderRight = getBorder())
+                );
+            });
+            document.getElementById("border-bottom").addEventListener("click", event => {
+                if (event.target.classList.contains("disabled")) return;
+                ui.selection.forEachCell((cell, i, j) =>
+                    i === ui.selection.height() && (cell.style.borderBottom = getBorder())
+                );
+            });
+            document.getElementById("border-left").addEventListener("click", event => {
+                if (event.target.classList.contains("disabled")) return;
+                ui.selection.forEachCell((cell, i, j, row, column) => {
+                    if (!j) ui._getCellByCoordinates(row, column - 1).style.borderRight = getBorder();
+                });
+            });
+            document.getElementById("border-horizontal").addEventListener("click", event => {
+                if (event.target.classList.contains("disabled")) return;
+                ui.selection.forEachCell((cell, i, j) =>
+                    i !== ui.selection.height() && (cell.style.borderBottom = getBorder())
+                );
+            });
+            document.getElementById("border-vertical").addEventListener("click", event => {
+                if (event.target.classList.contains("disabled")) return;
+                ui.selection.forEachCell((cell, i, j) =>
+                    j !== ui.selection.width() && (cell.style.borderRight = getBorder())
+                );
+            });
+            document.getElementById("border-inner").addEventListener("click", event => {
+                if (event.target.classList.contains("disabled")) return;
+                ui.selection.forEachCell((cell, i, j) => {
+                    if (i !== ui.selection.height()) cell.style.borderBottom = getBorder();
+                    if (j !== ui.selection.width()) cell.style.borderRight = getBorder();
+                });
+            });
+            document.getElementById("border-outer").addEventListener("click", event => {
+                if (event.target.classList.contains("disabled")) return;
+                ui.selection.forEachCell((cell, i, j, row, column) => {
+                    if (!i) ui._getCellByCoordinates(row - 1, column).style.borderBottom = getBorder();
+                    if (!j) ui._getCellByCoordinates(row, column - 1).style.borderRight = getBorder();
+                    if (i === ui.selection.height()) cell.style.borderBottom = getBorder();
+                    if (j === ui.selection.width()) cell.style.borderRight = getBorder();
+                });
+            });
+            document.getElementById("border-all").addEventListener("click", event => {
+                if (event.target.classList.contains("disabled")) return;
+                document.getElementById("border-inner").click();
+                document.getElementById("border-outer").click();
+            });
+            document.getElementById("border-clear").addEventListener("click", event => {
+                if (event.target.classList.contains("disabled")) return;
+                ui.selection.forEachCell((cell, i, j, row, column) => {
+                    if (!i) ui._getCellByCoordinates(row - 1, column).style.borderBottom = "none";
+                    if (!j) ui._getCellByCoordinates(row, column - 1).style.borderRight = "none";
+                    cell.style.borderBottom = cell.style.borderRight = "none";
+                });
+            });
         }
 
     },
@@ -197,6 +331,8 @@ const ui = {
                 case "boolean":
                     text = value ? "TRUE" : "FALSE";
                     break;
+                case "undefined":
+                	break;
                 default:
                     error = "Calculated value is not printable";
 
@@ -208,6 +344,7 @@ const ui = {
         spreadsheet.addEventListener(Spreadsheet.Event.CELL_FORMULA_UPDATED, (row, column, formula) => {
             if(ui.selection.exists() && row === ui.selection.start.row && column === ui.selection.start.column) {
                 document.getElementById("formula").textContent = "=" + formula;
+                ui._moveFormulaInputCaretToEnd();
             }
         });
 
@@ -280,12 +417,22 @@ const ui = {
 
     /**
      * Gets cell element by its coordinates
+     * @param {int} row
+     * @param {int} column
+     * @private
+     */
+    _getCellByCoordinates(row, column) {
+        return document.querySelectorAll("#table tr")[row + 1].children[column + 1];
+    },
+
+    /**
+     * Gets cell element by its location
      * @param {ui.CellLocation} location
      * @returns {HTMLElement}
      * @private
      */
     _getCellByLocation(location) {
-        return document.querySelectorAll("#table tr")[location.row + 1].children[location.column + 1];
+        return this._getCellByCoordinates(location.row, location.column);
     },
 
     /**
@@ -348,12 +495,42 @@ const ui = {
     },
 
     /**
-     * Tells UI that there are selected cells and controls should be enabled
+     * Moves caret in focused formula field to the end
      * @private
      */
-    _setTableHasSelection() {
+    _moveFormulaInputCaretToEnd() {
+        const formulaInput = document.getElementById("formula");
+        if(formulaInput !== document.activeElement) return;
+        const range = document.createRange();
+        range.selectNodeContents(formulaInput);
+        range.collapse(false);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+    },
+
+    /**
+     * Tells UI that there are selected cells and controls should be enabled and updated
+     * @private
+     */
+    _setTableSelectionChanged() {
 
         document.getElementById("formula").contentEditable = true;
+        document.querySelectorAll(".requires-selection").forEach(element => element.classList.remove("disabled"));
+
+        document.getElementById("bold").classList[
+            ui.selection.everyCell(cell => cell.style.fontWeight === "bold") ? "add" : "remove"
+        ]("active");
+        document.getElementById("italic").classList[
+            ui.selection.everyCell(cell => cell.style.fontStyle === "italic") ? "add" : "remove"
+        ]("active");
+        document.getElementById("underlined").classList[
+            ui.selection.everyCell(cell => cell.style.textDecoration === "underline") ? "add" : "remove"
+        ]("active");
+        ["left", "center", "right", "justify"].forEach(value =>
+            document.getElementById("align-" + value).classList[
+                ui.selection.everyCell(cell => cell.style.textAlign === value) ? "add" : "remove"
+            ]("active"));
 
     },
 
@@ -408,23 +585,16 @@ const ui = {
             this.start = start;
             this.end = end;
 
-            const startRow = Math.min(this.start.row, this.end.row);
-            const startColumn = Math.min(this.start.column, this.end.column);
-            const rows = document.querySelectorAll("#table tr");
-            for(let i = startRow; i <= startRow + this.height(); i++) {
-                const cells = rows[i + 1].children;
-                for(let j = startColumn; j <= startColumn + this.width(); j++) {
-                    const cell = cells[j + 1];
-                    cell.classList.add("selected");
-                    if(i === this.start.row && j === this.start.column) cell.classList.add("selected-first");
-                    if(i === startRow) cell.classList.add("selection-border-top");
-                    if(i === startRow + this.height()) cell.classList.add("selection-border-bottom");
-                    if(j === startColumn) cell.classList.add("selection-border-left");
-                    if(j === startColumn + this.width()) cell.classList.add("selection-border-right");
-                }
-            }
+            this.forEachCell((cell, i, j, row, column) => {
+                cell.classList.add("selected");
+                if(row === this.start.row && column === this.start.column) cell.classList.add("selected-first");
+                if(i === 0) ui._getCellByCoordinates(row - 1, column).classList.add("selection-border-bottom");
+                if(i === this.height()) cell.classList.add("selection-border-bottom");
+                if(j === 0) ui._getCellByCoordinates(row, column - 1).classList.add("selection-border-right");
+                if(j === this.width()) cell.classList.add("selection-border-right");
+            });
 
-            ui._setTableHasSelection();
+            ui._setTableSelectionChanged();
 
         },
 
@@ -436,12 +606,47 @@ const ui = {
             this.start = null;
             this.end = null;
 
-            document.querySelectorAll("#table td.selected").forEach(element => {
+            document.querySelectorAll(
+                "#table .selected, #table .selection-border-right, #table .selection-border-bottom"
+            ).forEach(element => {
                 [
-                    "selected", "selected-first",
-                    "selection-border-top", "selection-border-right", "selection-border-left", "selection-border-bottom"
+                    "selected", "selected-first", "selection-border-right", "selection-border-bottom"
                 ].forEach(className => element.classList.remove(className));
             });
+
+        },
+
+        /**
+         * Calls a function for each of the selected cells
+         * @param {function} callback
+         */
+        forEachCell(callback) {
+
+            if(!this.exists()) return;
+
+            const startRow = Math.min(this.start.row, this.end.row);
+            const startColumn = Math.min(this.start.column, this.end.column);
+            const rows = document.querySelectorAll("#table tr");
+            for(let i = startRow; i <= startRow + this.height(); i++) {
+                const cells = rows[i + 1].children;
+                for (let j = startColumn; j <= startColumn + this.width(); j++) {
+                    callback(cells[j + 1], i - startRow, j - startColumn, i, j);
+                }
+            }
+
+        },
+
+        /**
+         * Calls a function for each of the selected cells and returns true if callback
+         *   returns true for every cell
+         * @param callback
+         * @returns {boolean}
+         */
+        everyCell(callback) {
+
+            let flag = true;
+            this.forEachCell((...args) => flag = flag && !!callback(...args));
+            return flag;
 
         }
 

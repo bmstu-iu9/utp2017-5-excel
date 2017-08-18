@@ -35,6 +35,22 @@ ul, ol {
     clear: both;
 }
 
+@mixin control-hover-light($selector) {
+    #{$selector} {
+        transition: background 0.135s ease;
+    }
+    #{$selector}:hover {
+        background: rgba(0, 0, 0, 0.05);
+    }
+}
+@mixin control-hover-active-light($selector) {
+    @include control-hover-light($selector);
+    #{$selector}:active {
+        transition: background 0s;
+        background: rgba(0, 0, 0, 0.09);
+    }
+}
+
 $header-height: 56px;
 #header {
     position: absolute;
@@ -110,11 +126,137 @@ $blocks-spacing: 15px;
     border-radius: 3px;
     box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.15);
 }
+#toolbar > li.active {
+
+    display: block;
+
+    .controls-group {
+        position: relative;
+        float: left;
+        padding: 0 8px 0 9px;
+    }
+    .controls-group:not(:first-child)::before {
+        content: "";
+        position: absolute;
+        top: 0; bottom: 0; left: 0;
+        height: 24px;
+        margin: auto 0;
+        border-left: 1px solid #E2E2E2;
+    }
+    .icon {
+        display: block;
+        float: left;
+        width: 30px;
+        height: 30px;
+        line-height: 30px;
+        white-space: nowrap;
+        text-align: center;
+        margin: 5px 3px;
+        border-radius: 4px;
+        font-size: 20px;
+        color: rgba(0, 0, 0, 0.56);
+    }
+
+    .toggle, .switch, .button {
+        cursor: pointer;
+    }
+    @include control-hover-light(".toggle:not(.disabled):not(.active)");
+    @include control-hover-light(".switch:not(.disabled):not(.active)");
+    @include control-hover-active-light(".button:not(.disabled)");
+    .toggle.active, .switch.active {
+        background: #C8C8C8;
+    }
+    .toggle.disabled, .switch.disabled, .button.disabled {
+        color: rgba(0, 0, 0, 0.33);
+        cursor: default;
+    }
+
+    .dropdown-toggle {
+        float: none;
+        position: relative;
+        padding-right: 12px;
+    }
+    .dropdown-toggle::after {
+        content: "";
+        position: absolute;
+        top: 0; right: 0; bottom: 0;
+        width: 0;
+        height: 0;
+        margin: auto 4px;
+        border: 4px solid transparent;
+        border-top: 5px solid rgba(0, 0, 0, 0.5);
+        border-bottom-width: 0;
+        pointer-events: none;
+    }
+    .dropdown-toggle.disabled::after {
+        border-top-color: rgba(0, 0, 0, 0.25);
+    }
+    .dropdown-wrap {
+        position: relative;
+        float: left;
+    }
+    .dropdown {
+        position: absolute;
+        top: 38px;
+        left: 8px;
+        z-index: 65536;
+        background: #FFF;
+        border-radius: 3px;
+        box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.16);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.135s ease;
+    }
+    .dropdown-toggle.icon + .dropdown {
+        left: 3px;
+    }
+    .dropdown-toggle.active + .dropdown {
+        opacity: 1;
+        pointer-events: auto;
+    }
+    .select-toggle {
+        margin: 8px;
+        padding: 0 18px 0 3px;
+        border-bottom: 1px dotted rgba(0, 0, 0, 0.4);
+        border-radius: 3px 3px 0 0;
+        font-size: 0.82em;
+        line-height: 24px;
+    }
+    .select li {
+        display: block;
+        min-width: 50px;
+        padding: 6px 12px;
+        font-size: 0.92em;
+        color: #424242;
+        white-space: nowrap;
+        cursor: pointer;
+    }
+    @include control-hover-active-light(".select li");
+
+    $color-size: 16px;
+    $color-margin: 3px;
+    $colors-per-row: 8;
+    .color {
+        padding: 6px;
+        width: ($color-size + 2 * $color-margin) * $colors-per-row;
+    }
+    .color > li {
+        display: block;
+        float: left;
+        margin: $color-margin;
+        width: $color-size;
+        height: $color-size;
+        cursor: pointer;
+        outline: 1px solid #FFF;
+        transition: outline-color 0.135s ease;
+    }
+    .color > li:hover {
+        outline-color: #333;
+    }
+
+}
 #toolbar > li {
     display: none;
-}
-#toolbar > li.active {
-    display: block;
 }
 #formula {
     font-family: $font-monospace;
@@ -226,19 +368,13 @@ $blocks-spacing: 15px;
         background-color: #ECF3FF;
     }
     td.selected-first {
-        background-color: #FFF;
-    }
-    td.selection-border-top {
-        border-top: $selection-border-style !important;
+        background-color: #FFF !important;
     }
     td.selection-border-right {
         border-right: $selection-border-style !important;
     }
     td.selection-border-bottom {
         border-bottom: $selection-border-style !important;
-    }
-    td.selection-border-left {
-        border-left: $selection-border-style !important;
     }
 
     td.error {
