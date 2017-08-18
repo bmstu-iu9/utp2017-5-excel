@@ -1108,8 +1108,12 @@ Spreadsheet._CellGraph.Vertex = class {
             if (this.cycle.indexOf(current) === -1) this.cycle.push(current);
             current = current._parent;
         }
+        if (this.cycle.indexOf(this) === -1) this.cycle.push(this);
     }
 };
+
+
+
 
 
 
