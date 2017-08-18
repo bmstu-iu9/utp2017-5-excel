@@ -333,6 +333,8 @@ const ui = {
                 case "boolean":
                     text = value ? "TRUE" : "FALSE";
                     break;
+                case "undefined":
+                	break;
                 default:
                     error = "Calculated value is not printable";
 

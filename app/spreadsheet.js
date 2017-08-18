@@ -810,15 +810,15 @@ Spreadsheet._Token = class {
                     this.body+=String.fromCharCode(this.start.getCharCode());
                     this.follow = this.follow.skipWhile(/[0-9]/i, this);
                     if (this.follow.satisfies(/[.]/i)) {
-                        this.follow = this.follow.skipWithBody();
+                        this.follow = this.follow.skipWithBody(this);
                         this.follow = this.follow.skipWhile(/[0-9]/i, this);
                     }
                     if(this.follow.satisfies(/[a-zA-Z]/i)) {
-                        throw new Spreadsheet.FormulaError("delimiter expected", this.start.index);
+                        throw new Spreadsheet.FormulaError("delimiter expected", this.start.index+1);
                     }
                     this.tag = Spreadsheet._Token.Tag.NUMBER;
                 } else {
-                    throw new Spreadsheet.FormulaError(`Unexpected ${this.start.tag}`, this.start.index);
+                    throw new Spreadsheet.FormulaError(`Unexpected '${this.start.formula[this.start.index]}'`, this.start.index+1);
                 }
         }
     }
@@ -890,7 +890,7 @@ Spreadsheet._Parser = class {
      */
     expect(tag) {
         if(!this.token.matches(tag)) {
-            throw new Spreadsheet.FormulaError(`Unexpected ${tag}`, this.token.start.index);
+            throw new Spreadsheet.FormulaError(`Unexpected ${tag}`, this.token.start.index+1);
         }
         this.token = this.token.next();
     }
@@ -899,6 +899,7 @@ Spreadsheet._Parser = class {
      * Parses formula
      */
     parse() {
+    	if (this.token.tag === Spreadsheet._Token.Tag.END_OF_TEXT) return undefined;
         const res = this.parseExpression();
         this.expect(Spreadsheet._Token.Tag.END_OF_TEXT);
         return res;
@@ -1083,7 +1084,7 @@ Spreadsheet._Parser = class {
             this.token = this.token.next();
             return new Spreadsheet._Expression(Spreadsheet._Function.NEGATE, this.parseFactor(), res);
         } else {
-            throw new Spreadsheet.FormulaError(`Unexpected ${this.token.tag}`, this.token.start.index);
+            throw new Spreadsheet.FormulaError(`Unexpected ${this.token.tag}`, this.token.start.index+1);
         }
     }
 
