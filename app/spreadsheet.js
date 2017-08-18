@@ -204,27 +204,30 @@ const Spreadsheet = class extends EventManager {
      */
     toCSV(){
 
-        var CSV = "";
+        var csv = "";
 
         for(let cells of this.cells){
             for(let cell of cells){
                 switch(typeof(cell.value)){
                     case "string":
-                        CSV += cell.value + ",";
+                        csv += cell.value.indexOf("\"") == -1 ? cell.value + "," : "\"" + cell.value.replace(/"/g, "\"\"") + "\"";
                         break;
-                    case "undefined":
-                        CSV += ",";
+                    case "boolean":
+                        csv += cell.value ? "TRUE" : "FALSE";
+                        break;
+                    case "number":
+                        csv += cell.value.toString() + ",";
                         break;
                     default:
-                        CSV += cell.value.toString() + ",";
+                        csv += ",";
                 }
             }
-            CSV = CSV.slice(0,-1);
-            CSV += '\n';
+            csv = csv.slice(0,-1);
+            csv += '\n';
         }
 
-        CSV = CSV.slice(0,-1);
-        return CSV;
+        csv = csv.slice(0,-1);
+        return csv;
     }
 
 };
