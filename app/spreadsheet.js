@@ -624,7 +624,7 @@ Spreadsheet._Expression = class {
     constructor(func, args, position) {
         this.func = func;
         this.args = args;
-        this.position = position;
+        this.position = position.index + 1;
     }
     /**
      * Evaluates formula in the cell
