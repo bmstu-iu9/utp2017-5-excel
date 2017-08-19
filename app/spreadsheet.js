@@ -184,11 +184,21 @@ const Spreadsheet = class extends EventManager {
         this.graph.iterateFrom(vertex, vertex => {
             const cell = this.cells[vertex.row][vertex.column];
             if (cell.expression instanceof Spreadsheet._Expression) {
-                cell.value = cell.expression.evaluate(this);
+                try {
+                    cell.value = cell.expression.evaluate(this);
+                }
+                catch (error) {
+                    if (error instanceof Spreadsheet.FormulaError) {
+                        this.triggerEvent(Spreadsheet.Event.CELL_FORMULA_ERROR, vertex.row, vertex.column, error);
+                    } else console.log(error);
+                    return;
+                }
             } else if (cell.expression instanceof Spreadsheet._CellReference) {
                 if (!this._cellExists(cell.expression.row, cell.expression.column) || this.cells[cell.expression.row][cell.expression.column].value == null) {
                     cell.value = undefined;
-                    throw new Spreadsheet.FormulaDependencyOnEmptyCellError(cell.expression.position);
+                    this.triggerEvent(Spreadsheet.Event.CELL_FORMULA_ERROR, vertex.row, vertex.column,
+                            new Spreadsheet.FormulaDependencyOnEmptyCellError(cell.expression.position));
+                    return;
                 }
                 cell.value = this.cells[cell.expression.row][cell.expression.column].value;
             } else {
@@ -273,6 +283,14 @@ Spreadsheet.Event = Object.freeze({
     CELL_FORMULA_UPDATED: Symbol("cell_formula_updated"),
 
     /**
+     * When error occurs in a cell
+     * @param {int} Row index
+     * @param {int} Column index
+     * @param {Spreadsheet.FormulaError} Error object
+     */
+    CELL_FORMULA_ERROR: Symbol("cell_formula_error"),
+
+    /**
      * When it is detected that cell is a part or a circular dependency
      * @param {int} Row index
      * @param {int} Column index
@@ -298,8 +316,8 @@ Spreadsheet.FormulaError = class extends Error {
  */
 Spreadsheet.FormulaDependencyOnEmptyCellError = class extends Spreadsheet.FormulaError {
     constructor(position) {
-        super(`Dependency on uninitialized cell`, position);
-        this.name = "Cell Value Error";
+        super(`Dependency on empty cell`, position);
+        this.name = "Cell Reference Error";
     }
 };
 
@@ -309,7 +327,7 @@ Spreadsheet.FormulaDependencyOnEmptyCellError = class extends Spreadsheet.Formul
 Spreadsheet.ArgumentTypeError = class extends Spreadsheet.FormulaError {
     constructor(position) {
         super("Invalid type of argument(s)", position);
-        this.name = "Type of Argument Error";
+        this.name = "Arguments Type Error";
         this.position = position;
     }
 };

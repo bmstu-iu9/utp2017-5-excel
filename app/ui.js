@@ -370,15 +370,17 @@ const ui = {
         });
 
         spreadsheet.addEventListener(Spreadsheet.Event.CELL_FORMULA_UPDATED, (row, column, formula) => {
-            if(ui.selection.exists() && row === ui.selection.start.row && column === ui.selection.start.column) {
-                document.getElementById("formula").textContent = "=" + formula;
+            if (ui.selection.exists() && row === ui.selection.start.row && column === ui.selection.start.column) {
+                document.getElementById("formula").textContent = formula && "=" + formula;
                 ui._moveFormulaInputCaretToEnd();
             }
         });
 
-        spreadsheet.addEventListener(Spreadsheet.Event.CELL_CIRCULAR_DEPENDENCY_DETECTED, (row, column) => {
-            ui._setError(new ui.CellLocation(row, column), "Circular dependency detected");
-        });
+        spreadsheet.addEventListener(Spreadsheet.Event.CELL_FORMULA_ERROR, (row, column, error) =>
+            ui._setError(new ui.CellLocation(row, column), error.toString()));
+
+        spreadsheet.addEventListener(Spreadsheet.Event.CELL_CIRCULAR_DEPENDENCY_DETECTED, (row, column) =>
+            ui._setError(new ui.CellLocation(row, column), "Circular dependency detected"));
 
     },
 
