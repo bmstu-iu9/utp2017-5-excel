@@ -105,20 +105,25 @@ const Spreadsheet = class extends EventManager {
      * @private
      */
     _expandTo(height, width) {
-        if (height < 0 || width < 0) return;
         const rows = this.cells.length;
         const columns = this.cells.length > 0 ? this.cells[0].length : 0;
-        if (height > rows) {
-            for (let i = rows; i < height; i++) {
-                this.cells[i] = (new Array(columns)).fill(null).map((_, j) => new Spreadsheet._Cell(i, j));
-            }
+        const newI = rows < height ? height : rows;
+        const newJ = columns < width ? width : columns;
+        if (newI > rows) {
+        	for (let indexJ = rows; indexJ < height; indexJ++) {
+        		if (this.cells[indexJ] === undefined) this.cells[indexJ] = [];               
+            	for (let indexI = 0; indexI < columns; indexI++) {
+                	this.cells[indexJ][indexI] = new Spreadsheet._Cell(height, width);
+            	}
+        	}
         }
-        if (width > columns) {
-            for (let i = 0; i < height; i++) {
-                for (let j = columns; j < width; j++) {
-                    this.cells[i][j] = new Spreadsheet._Cell(i, j);
-                }
-            }
+        if (newJ > columns) {
+        	for (let indexJ = 0; indexJ < newI; indexJ++) {
+            	if (this.cells[indexJ] === undefined) this.cells[indexJ] = [];
+            	for (let indexI = columns; indexI < width; indexI++) {                    
+            		this.cells[indexJ][indexI] = new Spreadsheet._Cell(height, width);
+            	}
+        	}
         }
     }
 
