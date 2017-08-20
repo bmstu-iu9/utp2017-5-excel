@@ -222,11 +222,14 @@ const ui = {
                     element.dispatchEvent(new CustomEvent("activate"));
                 } else if (element.matches(".dropdown > li")) {
                     const dropdown = element.parentElement;
-                    Array.prototype.forEach.call(dropdown.children, element => element.classList.remove("selected"));
-                    element.classList.add("selected");
-                    const text = element.textContent;
-                    if (text) dropdown.previousElementSibling.textContent = element.textContent;
-                    dropdown.previousElementSibling.classList.remove("ambiguous");
+                    const dropwdownToggle = dropdown.previousElementSibling;
+                    if (!dropwdownToggle.classList.contains("action-select")) {
+                        Array.prototype.forEach.call(dropdown.children, element => element.classList.remove("selected"));
+                        element.classList.add("selected");
+                        const text = element.textContent;
+                        if (text) dropwdownToggle.textContent = element.textContent;
+                        dropwdownToggle.classList.remove("ambiguous");
+                    }
                     dropdown.dispatchEvent(new CustomEvent("change", {detail: {
                         value: dropdown.classList.contains("color") ?
                             element.style.backgroundColor : element.getAttribute("data-value")
@@ -337,6 +340,65 @@ const ui = {
             });
         }
 
+        { // Cell actions
+            document.getElementById("copy").addEventListener("click", event => {
+                if (event.target.classList.contains("disabled")) return;
+                ui.buffer = ui.spreadsheet.bufferize(
+                    ui.selection.start.row, ui.selection.start.column, ui.selection.end.row, ui.selection.end.column);
+                document.querySelectorAll(".requires-copied-cells").forEach(element => element.classList.remove("disabled"));
+            });
+            document.getElementById("paste").addEventListener("change", event => {
+                let buffer;
+                switch (event.detail.value) {
+                    case "right":
+                        buffer = ui.spreadsheet.bufferize(ui.selection.start.row, ui.selection.start.column,
+                            ui.selection.start.row + ui.buffer.height(), ui.tableWidth() - 1);
+                        ui.spreadsheet.paste(buffer, ui.selection.start.row, ui.selection.start.column + ui.buffer.width());
+                        break;
+                    case "down":
+                        buffer = ui.spreadsheet.bufferize(ui.selection.start.row, ui.selection.start.column,
+                            ui.tableHeight() - 1, ui.selection.start.column + ui.buffer.width());
+                        ui.spreadsheet.paste(buffer, ui.selection.start.row + ui.buffer.height(), ui.selection.start.column);
+                        break;
+                }
+                ui.spreadsheet.paste(ui.buffer, ui.selection.start.row, ui.selection.end.column);
+            });
+            document.getElementById("clear").addEventListener("click", event => {
+                if (event.target.classList.contains("disabled")) return;
+                ui.selection.forEachCell((cell, i, j, row, column) => ui.spreadsheet.setFormula(row, column, ""));
+            });
+            document.getElementById("insert").addEventListener("change", event => {
+                let buffer;
+                switch (event.detail.value) {
+                    case "right":
+                        buffer = ui.spreadsheet.bufferize(ui.selection.topLeftRow(), ui.selection.topLeftColumn(),
+                            ui.selection.topLeftRow() + ui.selection.height(), ui.tableWidth() - 1);
+                        ui.spreadsheet.paste(buffer, ui.selection.topLeftRow(), ui.selection.topLeftColumn() + ui.selection.width());
+                        break;
+                    case "down":
+                        buffer = ui.spreadsheet.bufferize(ui.selection.topLeftRow(), ui.selection.topLeftColumn(),
+                            ui.tableHeight() - 1, ui.selection.topLeftRow() + ui.selection.width());
+                        ui.spreadsheet.paste(buffer, ui.selection.topLeftRow() + ui.selection.height(), ui.selection.topLeftColumn());
+                        break;
+                }
+                document.getElementById("clear").click();
+            });
+            document.getElementById("delete").addEventListener("change", event => {
+                let buffer;
+                switch (event.detail.value) {
+                    case "left":
+                        buffer = ui.spreadsheet.bufferize(ui.selection.topLeftRow(), ui.selection.topLeftColumn() + ui.selection.width(),
+                            ui.selection.topLeftRow() + ui.selection.height(), ui.tableWidth() - 1);
+                        ui.spreadsheet.paste(buffer, ui.selection.topLeftRow(), ui.selection.topLeftColumn());
+                        break;
+                    case "up":
+                        buffer = ui.spreadsheet.bufferize(ui.selection.topLeftRow() + ui.selection.height(), ui.selection.topLeftColumn(),
+                            ui.tableHeight() - 1, ui.selection.topLeftRow() + ui.selection.width());
+                        ui.spreadsheet.paste(buffer, ui.selection.topLeftRow(), ui.selection.topLeftColumn());
+                        break;
+                }
+            });
+        }
     },
 
     /**
@@ -546,7 +608,8 @@ const ui = {
     _setTableSelectionChanged() {
 
         document.getElementById("formula").contentEditable = true;
-        document.querySelectorAll(".requires-selection").forEach(element => element.classList.remove("disabled"));
+        document.querySelectorAll(".requires-selection").forEach(element =>
+            (!element.classList.contains("requires-copied-cells") || ui.buffer) && element.classList.remove("disabled"));
 
         let fontFamily = null;
         ui.selection.forEachCell(cell => fontFamily = fontFamily === null ? cell.style.fontFamily || "\"Open Sans\"" :
@@ -629,6 +692,22 @@ const ui = {
         },
 
         /**
+         * Returns row index of the top-left cell of the selection
+         * @returns {int}
+         */
+        topLeftRow() {
+            return Math.min(this.start.row, this.end.row);
+        },
+
+        /**
+         * Returns column index of the top-left cell of the selection
+         * @returns {int}
+         */
+        topLeftColumn() {
+            return Math.min(this.start.column, this.end.column);
+        },
+
+        /**
          * Sets selection
          * @param {ui.CellLocation} start
          * @param {ui.CellLocation} end
@@ -678,8 +757,8 @@ const ui = {
 
             if(!this.exists()) return;
 
-            const startRow = Math.min(this.start.row, this.end.row);
-            const startColumn = Math.min(this.start.column, this.end.column);
+            const startRow = this.topLeftRow();
+            const startColumn = this.topLeftColumn();
             const rows = document.querySelectorAll("#table tr");
             for(let i = startRow; i <= startRow + this.height(); i++) {
                 const cells = rows[i + 1].children;
@@ -704,7 +783,13 @@ const ui = {
 
         }
 
-    }
+    },
+
+    /**
+     * CellBuffer that contains currently copied cells
+     * @type Spreadsheet.CellBuffer
+     */
+    buffer: null
 
 };
 
