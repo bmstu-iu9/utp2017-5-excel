@@ -110,20 +110,20 @@ const Spreadsheet = class extends EventManager {
         const newI = rows < height ? height : rows;
         const newJ = columns < width ? width : columns;
         if (newI > rows) {
-        	for (let indexJ = rows; indexJ < height; indexJ++) {
-        		if (this.cells[indexJ] === undefined) this.cells[indexJ] = [];               
-            	for (let indexI = 0; indexI < columns; indexI++) {
-                	this.cells[indexJ][indexI] = new Spreadsheet._Cell(height, width);
-            	}
-        	}
+            for (let indexJ = rows; indexJ < height; indexJ++) {
+                if (this.cells[indexJ] === undefined) this.cells[indexJ] = [];               
+                for (let indexI = 0; indexI < columns; indexI++) {
+                    this.cells[indexJ][indexI] = new Spreadsheet._Cell(height, width);
+                }
+            }
         }
         if (newJ > columns) {
-        	for (let indexJ = 0; indexJ < newI; indexJ++) {
-            	if (this.cells[indexJ] === undefined) this.cells[indexJ] = [];
-            	for (let indexI = columns; indexI < width; indexI++) {                    
-            		this.cells[indexJ][indexI] = new Spreadsheet._Cell(height, width);
-            	}
-        	}
+            for (let indexJ = 0; indexJ < newI; indexJ++) {
+                if (this.cells[indexJ] === undefined) this.cells[indexJ] = [];
+                for (let indexI = columns; indexI < width; indexI++) {                    
+                    this.cells[indexJ][indexI] = new Spreadsheet._Cell(height, width);
+                }
+            }
         }
     }
 
@@ -202,7 +202,7 @@ const Spreadsheet = class extends EventManager {
                 if (!this._cellExists(cell.expression.row, cell.expression.column) || this.cells[cell.expression.row][cell.expression.column].value == null) {
                     cell.value = undefined;
                     this.triggerEvent(Spreadsheet.Event.CELL_FORMULA_ERROR, vertex.row, vertex.column,
-                            new Spreadsheet.FormulaDependencyOnEmptyCellError(cell.expression.position));
+                        new Spreadsheet.FormulaDependencyOnEmptyCellError(cell.expression.position));
                     return;
                 }
                 cell.value = this.cells[cell.expression.row][cell.expression.column].value;
@@ -253,11 +253,34 @@ const Spreadsheet = class extends EventManager {
     static fromCSV(csv){
 
         var spreadsheet = new Spreadsheet();
-
         const rows = csv.split(/\r\n|\r|\n/).length;
         const cols = (csv.split(/\r\n|\r|\n/)[0].match(/,/g) || []).length + 1;
-
         spreadsheet._expandTo(rows, cols);
+
+        var getValues = function(text) {
+            let sep = ",";
+            for (var temp = text.split(sep), x = temp.length - 1, tl; x >= 0; x--) {
+                if (temp[x].replace(/"\s+$/, '"').charAt(temp[x].length - 1) == '"') {
+                    if ((tl = temp[x].replace(/^\s+"/, '"')).length > 1 && tl.charAt(0) == '"') {
+                        temp[x] = temp[x].replace(/^\s*"|"\s*$/g, '').replace(/""/g, '"');
+                    } else if (x) {
+                        temp.splice(x - 1, 2, [temp[x - 1], temp[x]].join(sep));
+                    } else temp = temp.shift().split(sep).concat(temp);
+                } else temp[x].replace(/""/g, '"');
+            } return temp;
+        };
+
+        var i = 0, j = 0;
+        for(let row of csv.split(/\r\n|\n/)){
+            for(let value of getValues(row)){
+                spreadsheet.setFormula(i, j++, value);
+                if(j == cols){
+                    i++;
+                    j = 0;
+                }
+            }
+        }
+
 
         return spreadsheet;
     }
@@ -1181,15 +1204,15 @@ Spreadsheet._Parser = class {
         const callArgs = this.parseCall();
         if (callArgs === null) {
             if (/^[a-z]+[1-9][0-9]*$/i.test(res)) {
-            	return new Spreadsheet._CellReference(res, currentPosition.index + 1);
+                return new Spreadsheet._CellReference(res, currentPosition.index + 1);
             } else {
-            	throw new Spreadsheet.FormulaError(`'(' expected`, index + 1 - res.length);
+                throw new Spreadsheet.FormulaError(`'(' expected`, index + 1 - res.length);
             }
         } else {
             if (Spreadsheet._Function.hasOwnProperty(res)) {
-            	return new Spreadsheet._Expression(Spreadsheet._Function[res], callArgs, currentPosition);
+                return new Spreadsheet._Expression(Spreadsheet._Function[res], callArgs, currentPosition);
             } else {
-            	throw new Spreadsheet.FormulaError(`Undefined function '${res}'`, index + 1 - res.length);
+                throw new Spreadsheet.FormulaError(`Undefined function '${res}'`, index + 1 - res.length);
             }
         }
     }
