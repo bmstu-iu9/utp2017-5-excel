@@ -661,8 +661,19 @@ Spreadsheet._Range = class {
      * @param {Spreadsheet._CellReference} end of range
      */
     constructor(start, end) {
-        this.start = start;
-        this.end = end;
+        if (start.row >= end.row && start.column >= end.column) {
+            this.start = end;
+            this.end = start;
+        } else if (start.row <= end.row && start.column >= end.column || start.row >= end.row && start.column <= end.column) {
+            const column = start.column;
+            start.column = end.column;
+            end.column = column;
+            this.start = start;
+            this.end = end;
+        } else {
+            this.start = start;
+            this.end = end;
+        }
     }
 };
 
