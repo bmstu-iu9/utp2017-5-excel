@@ -742,7 +742,7 @@ Spreadsheet._CellReference = class {
      * @param {String} cell name, letter/s + number/s
      * @param {int} position
      */
-    constructor(cell, position) {
+    constructor(cell, position, rowFixed, columnfixed) {
         let column = 0;
         let i = 0;
         for (; cell.charCodeAt(i) > 64;  i++) {
@@ -764,11 +764,11 @@ Spreadsheet._CellReference = class {
         /**
          * @type {boolean}
          */
-        this.rowFixed = undefined;
+        this.rowFixed = rowFixed;
         /**
          * @type {boolean}
          */
-        this.columnfixed = undefined;
+        this.columnfixed = columnfixed;
     }
 
 };
@@ -1305,27 +1305,54 @@ Spreadsheet._Parser = class {
         //<Identifiable> :== IDENTIFIER <CallOrSpan>
         const currentPosition = this.token.start;
         const res = this.token.body;
-        console.log("< Identifiable> :== IDENTIFIER <Call>");
+        console.log("< Identifiable> :== IDENTIFIER <CallOrSpan>");
         this.expect(Spreadsheet._Token.Tag.IDENTIFIER);
         const index = this.token.start.index;
         const callArgsOrEndOfRange = this.parseCallOrSpan();
+
         if (callArgsOrEndOfRange === null) {
-            if (/^[a-z]+[1-9][0-9]*$/i.test(res)) {
-                return new Spreadsheet._CellReference(res, currentPosition.index + 1);
+            if (/^\$[A-Z]+\$[1-9][0-9]*$/i.test(res)) {
+                return new Spreadsheet._CellReference(res.replace('$', '').replace('$', ''), currentPosition.index + 1, true, true);
+            } else if (/^[A-Z]+\$[1-9][0-9]*$/i.test(res)) {
+                return new Spreadsheet._CellReference(res.replace('$', ''), currentPosition.index + 1, true, false);
+            } else if (/^\$[A-Z]+[1-9][0-9]*$/i.test(res)) {
+                return new Spreadsheet._CellReference(res.replace('$', ''), currentPosition.index + 1, false, true);
+            } else if (/^[A-Z]+[1-9][0-9]*$/i.test(res)) {
+                return new Spreadsheet._CellReference(res, currentPosition.index + 1, false, false);
             } else {
                 throw new Spreadsheet.FormulaError(`'(' expected`, index + 1 - res.length);
             }
         } else if (typeof callArgsOrEndOfRange === 'string') {
-            const start = new Spreadsheet._CellReference(res, currentPosition.index + 1);
-            const end = new Spreadsheet._CellReference(callArgsOrEndOfRange, this.token.start.index + 1);
-            this.token = this.token.next();
-            return new Spreadsheet._Range(start, end);
-        } else {
-            if (Spreadsheet._Function.hasOwnProperty(res)) {
-                return new Spreadsheet._Expression(Spreadsheet._Function[res], callArgsOrEndOfRange, currentPosition);
+            let start = undefined;
+            if (/^\$[A-Z]+\$[1-9][0-9]*$/i.test(res)) {
+                start = new Spreadsheet._CellReference(res.replace('$', '').replace('$', ''), currentPosition.index + 1, true, true);
+            } else if (/^[A-Z]+\$[1-9][0-9]*$/i.test(res)) {
+                start = new Spreadsheet._CellReference(res.replace('$', ''), currentPosition.index + 1, true, false);
+            } else if (/^\$[A-Z]+[1-9][0-9]*$/i.test(res)) {
+                start = new Spreadsheet._CellReference(res.replace('$', ''), currentPosition.index + 1, false, true);
+            } else if (/^[A-Z]+[1-9][0-9]*$/i.test(res)) {
+                start = new Spreadsheet._CellReference(res, currentPosition.index + 1, false, false);
             } else {
                 throw new Spreadsheet.FormulaError(`Undefined function '${res}'`, index + 1 - res.length);
             }
+            let end = undefined;
+            if (/^\$[A-Z]+\$[1-9][0-9]*$/i.test(callArgsOrEndOfRange)) {
+                end = new Spreadsheet._CellReference(callArgsOrEndOfRange.replace('$', '').replace('$', ''), this.token.start.index + 1, true, true);
+            } else if (/^[A-Z]+\$[1-9][0-9]*$/i.test(callArgsOrEndOfRange)) {
+                end = new Spreadsheet._CellReference(callArgsOrEndOfRange.replace('$', ''), this.token.start.index + 1, true, false);
+            } else if (/^\$[A-Z]+[1-9][0-9]*$/i.test(callArgsOrEndOfRange)) {
+                end = new Spreadsheet._CellReference(callArgsOrEndOfRange.replace('$', ''), this.token.start.index + 1, false, true);
+            } else if (/^[A-Z]+[1-9][0-9]*$/i.test(callArgsOrEndOfRange)) {
+                end = new Spreadsheet._CellReference(callArgsOrEndOfRange, this.token.start.index + 1, false, false);
+            } else {
+                throw new Spreadsheet.FormulaError(`Undefined function '${res}'`, index + 1 - res.length);
+            }
+            this.token = this.token.next();
+            return new Spreadsheet._Range(start, end);
+        } else if (Spreadsheet._Function.hasOwnProperty(res)) {
+            return new Spreadsheet._Expression(Spreadsheet._Function[res], callArgsOrEndOfRange, currentPosition);
+        } else {
+            throw new Spreadsheet.FormulaError(`Undefined function '${res}'`, index + 1 - res.length);
         }
     }
 
@@ -1346,7 +1373,7 @@ Spreadsheet._Parser = class {
             this.token = this.token.next();
             if (this.token.tag === Spreadsheet._Token.Tag.IDENTIFIER) {
                 let res = this.token.body;
-                if (/^[a-z]+[1-9][0-9]*$/i.test(res)) {
+                if (/^\$?[A-Z]+\$?[1-9][0-9]*$/i.test(res)) {
                     return res;
                 } else {
                     throw new Spreadsheet.FormulaError(`Unexpected function '${res}'`, this.token.start.index + 1 - res.length);
