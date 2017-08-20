@@ -175,6 +175,14 @@ const Spreadsheet = class extends EventManager {
                 this.graph.addEdge(topVertex, vertex);
             } else if (expression instanceof Spreadsheet._Expression) {
                 expression.args.forEach(expression => lookThroughExpression(expression));
+            } else if (expression instanceof Spreadsheet._Range) {
+                for (let i = expression.getStartColumn(); i <= expression.getEndColumn(); i++ ) {
+                    for (let j = expression.getStartRow(); j <= expression.getEndRow(); j++) {
+                        const topVertex = this.graph.getVertexByCoordinates(j, i);
+                        this.graph.addEdge(topVertex, vertex);
+                    }
+                }
+
             }
         };
         lookThroughExpression(expression);
@@ -206,6 +214,22 @@ const Spreadsheet = class extends EventManager {
                     return;
                 }
                 cell.value = this.cells[cell.expression.row][cell.expression.column].value;
+            } else if (cell.expression instanceof Spreadsheet._Range) {
+                let cellsValues = [];
+                for (let i = cell.expression.getStartColumn() ; i <= cell.expression.getEndColumn(); i++ ) {
+                    let values = [];
+                    for (let j = cell.expression.getStartRow(); j <= cell.expression.getEndRow(); j++) {
+                        if (!this._cellExists(j, i) || this.cells[j][i].value == null) {
+                            cell.value = undefined;
+                            this.triggerEvent(Spreadsheet.Event.CELL_FORMULA_ERROR, j, i,
+                                new Spreadsheet.FormulaDependencyOnEmptyCellError(cell.expression.position));
+                            return;
+                        }
+                        values.push(this.cells[j][i].value);
+                    }
+                    cellsValues.push(values);
+                }
+                cell.value = new Spreadsheet._Table(cellsValues)
             } else {
                 cell.value = cell.expression;
             }
@@ -638,16 +662,45 @@ Spreadsheet._Function = Object.freeze({
         return a >= b;
     },
  
-    SUM(...oldArgs) {
-        const args = [].concat.apply([], oldArgs);
+    SUM(...args) {
+        console.log(args);
         if (args.length < 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         const p = this.position;
-        return args.reduce(function(sum, value) {
-            if (typeof value !== 'number') throw new Spreadsheet.ArgumentTypeError(p);
-            return sum + value;
+        return args.reduce((sum, element) => {
+            if (element instanceof Spreadsheet._Table) {
+                let rangeSum = 0;
+                element.forEachValue(cell => {
+                    if (typeof cell !== 'number') throw new Spreadsheet.ArgumentTypeError(p);
+                    rangeSum += cell;
+                });
+                return sum + rangeSum;
+            } else if (typeof element === "number") {
+                return sum + element;
+            } else {
+                throw new Spreadsheet.ArgumentTypeError(p);
+            }
         }, 0);
     }
 });
+
+/**
+ * @class Represents cell range matrix
+ *
+ */
+Spreadsheet._Table = class {
+
+    constructor(table) {
+        this.table = table
+    }
+
+    forEachValue(callback) {
+        for (let i = 0; i < this.table.length; i++) {
+            for (let j = 0; j < this.table[i].length; j++) {
+                callback(this.table[i][j], i, j);
+            }
+        }
+    }
+};
 
 /**
  * @class Represents cell range
@@ -661,19 +714,21 @@ Spreadsheet._Range = class {
      * @param {Spreadsheet._CellReference} end of range
      */
     constructor(start, end) {
-        if (start.row >= end.row && start.column >= end.column) {
-            this.start = end;
-            this.end = start;
-        } else if (start.row <= end.row && start.column >= end.column || start.row >= end.row && start.column <= end.column) {
-            const column = start.column;
-            start.column = end.column;
-            end.column = column;
-            this.start = start;
-            this.end = end;
-        } else {
-            this.start = start;
-            this.end = end;
-        }
+        this.start = start;
+        this.end = end;
+    }
+
+    getStartRow() {
+        return Math.min(this.start.row, this.end.row);
+    }
+    getStartColumn() {
+        return Math.min(this.start.column, this.end.column);
+    }
+    getEndRow() {
+        return Math.max(this.start.row, this.end.row);
+    }
+    getEndColumn() {
+        return Math.max(this.start.column, this.end.column);
     }
 };
 
@@ -753,15 +808,17 @@ Spreadsheet._Expression = class {
                 return spreadsheet.cells[elem.row][elem.column].value;
             } else if (elem instanceof Spreadsheet._Range) {
                 let cellsValues = [];
-                for (let i = elem.start.column; i <= elem.end.column; i++ ) {
-                    for (let j = elem.start.row; j <= elem.end.row; j++) {
+                for (let i = elem.getStartColumn(); i <= elem.getEndColumn(); i++ ) {
+                    let values = [];
+                    for (let j = elem.getStartRow(); j <= elem.getEndRow(); j++) {
                         if (!spreadsheet._cellExists(j, i) || spreadsheet.cells[j][i].value === undefined) {
                             throw new Spreadsheet.FormulaDependencyOnEmptyCellError(elem.start.position);
                         }
-                        cellsValues.push(spreadsheet.cells[j][i].value);
+                        values.push(spreadsheet.cells[j][i].value);
                     }
+                    cellsValues.push(values);
                 }
-                return cellsValues;
+                return new Spreadsheet._Table(cellsValues);
             } else {
                 return elem;
             }
@@ -906,7 +963,7 @@ Spreadsheet._Token = class {
                 this.tag = Spreadsheet._Token.Tag.COMMA;
                 break;
             case ':':
-               this.tag = Spreadsheet._Token.Tag.COLUMN;
+               this.tag = Spreadsheet._Token.Tag.COLON;
                break;
             case '=':
                 this.tag = Spreadsheet._Token.Tag.EQUALS;
@@ -1015,7 +1072,7 @@ Spreadsheet._Token.Tag = Object.freeze({
     PARENTHESIS_OPENING: "'('",
     PARENTHESIS_CLOSING: "')'",
     COMMA: "','",
-    COLUMN: "':'",
+    COLON: "':'",
     END_OF_TEXT: "end of formula"
 });
 
@@ -1284,7 +1341,7 @@ Spreadsheet._Parser = class {
             const args = this.parseArguments();
             this.expect(Spreadsheet._Token.Tag.PARENTHESIS_CLOSING);
             return args;
-        } else if (this.token.tag === Spreadsheet._Token.Tag.COLUMN) {
+        } else if (this.token.tag === Spreadsheet._Token.Tag.COLON) {
             console.log("< Call> :== \":\" IDENTIFIER ");
             this.token = this.token.next();
             if (this.token.tag === Spreadsheet._Token.Tag.IDENTIFIER) {
