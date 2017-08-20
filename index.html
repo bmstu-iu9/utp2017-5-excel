@@ -358,8 +358,52 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="icon button requires-selection disabled material-icons" id="border-clear">border_clear</div>
         </div>
     </li>
-    <li>Toolbar #3</li>
-    <li>Toolbar #4</li>
+    <li>
+        <div class="button requires-selection disabled text-button" id="copy"><i class="material-icons">content_copy</i>Copy</div>
+        <div class="dropdown-wrap">
+            <div class="toggle dropdown-toggle requires-selection requires-copied-cells disabled action-select"><i class="material-icons">content_paste</i>Paste</div>
+            <ul class="dropdown select" id="paste">
+                <li data-value="right">Push cells right</li>
+                <li data-value="down">Push cells down</li>
+                <li data-value="replace">Replace cells</li>
+            </ul>
+        </div>
+        <div class="button requires-selection disabled text-button" id="clear"><i class="material-icons">clear</i>Clear</div>
+        <div class="dropdown-wrap">
+            <div class="toggle dropdown-toggle requires-selection disabled action-select"><i class="material-icons">publish</i>Insert</div>
+            <ul class="dropdown select" id="insert">
+                <li data-value="right">Push cells right</li>
+                <li data-value="down">Push cells down</li>
+            </ul>
+        </div>
+        <div class="dropdown-wrap">
+            <div class="toggle dropdown-toggle requires-selection disabled action-select"><i class="material-icons">delete</i>Delete</div>
+            <ul class="dropdown select" id="delete">
+                <li data-value="left">Shift cells left</li>
+                <li data-value="up">Shift cells up</li>
+            </ul>
+        </div>
+    </li>
+    <li>
+        <div class="controls-group">
+            <div class="icon material-icons" id="file-icon">insert_drive_file</div>
+            <div class="input-container">
+                <input type="text" spellcheck="false" autocomplete="off" id="filename" value="Untitled">
+                <div class="input-underline"></div>
+            </div>
+        </div>
+        <div class="controls-group">
+            <div class="button text-button" id="import"><i class="material-icons">file_upload</i>Import</div>
+            <div class="dropdown-wrap">
+                <div class="toggle dropdown-toggle action-select"><i class="material-icons">file_download</i>Export</div>
+                <ul class="dropdown select" id="export">
+                    <li data-value="csv">.csv (Values only)</li>
+                    <li data-value="xlsx">.xlsx</li>
+                </ul>
+            </div>
+            <input type="file" id="file" class="hidden">
+        </div>
+    </li>
 </ul>
 <div id="main">
     <div id="container">
