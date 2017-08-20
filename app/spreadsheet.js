@@ -583,7 +583,7 @@ Spreadsheet._Function = Object.freeze({
     EQUALS(a, b) {
         if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof a !== typeof b) throw new Spreadsheet.ArgumentTypeError(this.position);
-        return a == b;
+        return a === b;
     },
 
     /**
@@ -636,9 +636,35 @@ Spreadsheet._Function = Object.freeze({
         if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof a !== typeof b || typeof a === "boolean") throw new Spreadsheet.ArgumentTypeError(this.position);
         return a >= b;
+    },
+ 
+    SUM(...oldArgs) {
+        const args = [].concat.apply([], oldArgs);
+        if (args.length < 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        const p = this.position;
+        return args.reduce(function(sum, value) {
+            if (typeof value !== 'number') throw new Spreadsheet.ArgumentTypeError(p);
+            return sum + value;
+        }, 0);
     }
-
 });
+
+/**
+ * @class Represents cell range
+ *
+ */
+Spreadsheet._Range = class {
+
+    /**
+     * @constructor
+     * @param {Spreadsheet._CellReference} start of range
+     * @param {Spreadsheet._CellReference} end of range
+     */
+    constructor(start, end) {
+        this.start = start;
+        this.end = end;
+    }
+};
 
 /**
  * @class Represents a _Cell reference
@@ -700,7 +726,7 @@ Spreadsheet._Expression = class {
     /**
      * Evaluates formula in the cell
      * @param {Spreadsheet} spreadsheet
-     * @returns {number|string|boolean} new cell value
+     * @returns {number|string|boolean|Array} new cell value
      * @throws {Spreadsheet.FormulaDependencyOnEmptyCellError}
      * @see Spreadsheet._CellReference.check
      *
@@ -714,6 +740,17 @@ Spreadsheet._Expression = class {
                     throw new Spreadsheet.FormulaDependencyOnEmptyCellError(elem.position);
                 }
                 return spreadsheet.cells[elem.row][elem.column].value;
+            } else if (elem instanceof Spreadsheet._Range) {
+                let cellsValues = [];
+                for (let i = elem.start.column; i <= elem.end.column; i++ ) {
+                    for (let j = elem.start.row; j <= elem.end.row; j++) {
+                        if (!spreadsheet._cellExists(j, i) || spreadsheet.cells[j][i].value === undefined) {
+                            throw new Spreadsheet.FormulaDependencyOnEmptyCellError(elem.start.position);
+                        }
+                        cellsValues.push(spreadsheet.cells[j][i].value);
+                    }
+                }
+                return cellsValues;
             } else {
                 return elem;
             }
@@ -857,6 +894,9 @@ Spreadsheet._Token = class {
             case ',':
                 this.tag = Spreadsheet._Token.Tag.COMMA;
                 break;
+            case ':':
+               this.tag = Spreadsheet._Token.Tag.COLUMN;
+               break;
             case '=':
                 this.tag = Spreadsheet._Token.Tag.EQUALS;
                 break;
@@ -864,18 +904,16 @@ Spreadsheet._Token = class {
                 while (true) {
                     if (this.follow.getCharCode() === -5) throw new Spreadsheet.FormulaError(`Could not find end of string`, this.follow.index+1); 
                     if (String.fromCodePoint(this.follow.getCharCode()) === "\"") break;
-                    if (String.fromCodePoint(this.follow.getCharCode()) === "\\" && this.follow.skip(this).getCharCode() !== -5) {
-                        this.follow = this.follow.skip(this);
+                    if (String.fromCodePoint(this.follow.getCharCode()) === "\\" && this.follow.skip().getCharCode() !== -5) {
+                        this.follow = this.follow.skip();
                         this.body += String.fromCodePoint(this.follow.getCharCode())
-                        this.follow = this.follow.skip(this);
+                        this.follow = this.follow.skip();
                         continue;
                     }
                     this.body += String.fromCodePoint(this.follow.getCharCode())
-                    this.follow = this.follow.skip(this);
+                    this.follow = this.follow.skip();
                 }
-                this.follow = this.follow.skip(this);
-                let startIndex = this.start.index;
-                let endIndex = this.follow.index;
+                this.follow = this.follow.skip();
                 this.tag = Spreadsheet._Token.Tag.STRING;
                 break;
             case '<':
@@ -966,6 +1004,7 @@ Spreadsheet._Token.Tag = Object.freeze({
     PARENTHESIS_OPENING: "'('",
     PARENTHESIS_CLOSING: "')'",
     COMMA: "','",
+    COLUMN: "':'",
     END_OF_TEXT: "end of formula"
 });
 
@@ -1195,22 +1234,27 @@ Spreadsheet._Parser = class {
      * @returns {Spreadsheet._Expression|Spreadsheet._CellReference}
      */
     parseIdentifiable() {
-        //<Identifiable> :== IDENTIFIER <Call>
+        //<Identifiable> :== IDENTIFIER <CallOrSpan>
         const currentPosition = this.token.start;
         const res = this.token.body;
         console.log("< Identifiable> :== IDENTIFIER <Call>");
         this.expect(Spreadsheet._Token.Tag.IDENTIFIER);
         const index = this.token.start.index;
-        const callArgs = this.parseCall();
-        if (callArgs === null) {
+        const callArgsOrEndOfRange = this.parseCallOrSpan();
+        if (callArgsOrEndOfRange === null) {
             if (/^[a-z]+[1-9][0-9]*$/i.test(res)) {
                 return new Spreadsheet._CellReference(res, currentPosition.index + 1);
             } else {
                 throw new Spreadsheet.FormulaError(`'(' expected`, index + 1 - res.length);
             }
+        } else if (typeof callArgsOrEndOfRange === 'string') {
+            const start = new Spreadsheet._CellReference(res, currentPosition.index + 1);
+            const end = new Spreadsheet._CellReference(callArgsOrEndOfRange, this.token.start.index + 1);
+            this.token = this.token.next();
+            return new Spreadsheet._Range(start, end);
         } else {
             if (Spreadsheet._Function.hasOwnProperty(res)) {
-                return new Spreadsheet._Expression(Spreadsheet._Function[res], callArgs, currentPosition);
+                return new Spreadsheet._Expression(Spreadsheet._Function[res], callArgsOrEndOfRange, currentPosition);
             } else {
                 throw new Spreadsheet.FormulaError(`Undefined function '${res}'`, index + 1 - res.length);
             }
@@ -1219,16 +1263,29 @@ Spreadsheet._Parser = class {
 
     /**
      * Parses Call rule
-     * @returns {Array}
+     * @returns {Array | String}
      */
-    parseCall() {
-        //<Call> :== "(" <Arguments> ")" | ε
+    parseCallOrSpan() {
+        //<CallOrSpan> :== "(" <Arguments> ")" | ":" IDENTIFIER | ε
         if (this.token.tag === Spreadsheet._Token.Tag.PARENTHESIS_OPENING) {
             console.log("< Call> :== \"(\" <Arguments> \")\"");
             this.token = this.token.next();
             const args = this.parseArguments();
             this.expect(Spreadsheet._Token.Tag.PARENTHESIS_CLOSING);
             return args;
+        } else if (this.token.tag === Spreadsheet._Token.Tag.COLUMN) {
+            console.log("< Call> :== \":\" IDENTIFIER ");
+            this.token = this.token.next();
+            if (this.token.tag === Spreadsheet._Token.Tag.IDENTIFIER) {
+                let res = this.token.body;
+                if (/^[a-z]+[1-9][0-9]*$/i.test(res)) {
+                    return res;
+                } else {
+                    throw new Spreadsheet.FormulaError(`Unexpected function '${res}'`, this.token.start.index + 1 - res.length);
+                }
+            } else {
+                throw new Spreadsheet.FormulaError(`Unexpected ${this.token.tag}`, this.token.start.index+1);
+            }
         } else {
             console.log("< Call> :== ε");
             return null;
