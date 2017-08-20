@@ -7,28 +7,36 @@
     <title>Spreadsheet</title>
 
     <!-- Open Sans from Google Fonts -->
-    <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,400i,600,600i,700,700i&amp;subset=cyrillic,cyrillic-ext,latin-ext" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css?family=Cousine&amp;subset=cyrillic,cyrillic-ext,latin-ext" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,400i,600,600i,700,700i&amp;subset=cyrillic,cyrillic-ext,latin-ext"
+          rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Cousine&amp;subset=cyrillic,cyrillic-ext,latin-ext"
+          rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
     <link href="style/style.css" rel="stylesheet">
 
     <script src="app/ui.js"></script>
     <script src="app/spreadsheet.js"></script>
+    <script src="app/libs/jszip.js"></script>
+    <script src="app/fs.js"></script>
     <script>
 
-"use strict";
+        "use strict";
+        let manager = new XLSXManager();
+        document.addEventListener("DOMContentLoaded", () => {
 
-document.addEventListener("DOMContentLoaded", () => {
+            ui.init();
 
-    ui.init();
+            // Creating new Spreadsheet and attaching it to User Interface
+            const spreadsheet = new Spreadsheet();
+            ui.attach(spreadsheet);
+            manager.setSpreadsheet(spreadsheet);
 
-    // Creating new Spreadsheet and attaching it to User Interface
-    const spreadsheet = new Spreadsheet();
-    ui.attach(spreadsheet);
+        });
 
-});
-
+        function test() {
+            console.log(manager.generateB64()); // use generate() to get blob
+        }
     </script>
 
 </head>
@@ -85,7 +93,9 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="icon toggle requires-selection disabled material-icons" id="italic">format_italic</div>
             <div class="icon toggle requires-selection disabled material-icons" id="underlined">format_underlined</div>
             <div class="dropdown-wrap">
-                <div class="icon toggle requires-selection disabled dropdown-toggle color-picker material-icons">format_color_text</div>
+                <div class="icon toggle requires-selection disabled dropdown-toggle color-picker material-icons">
+                    format_color_text
+                </div>
                 <ul class="dropdown color" id="color-text">
                     <li style="background-color: #FFF;"></li>
                     <li style="background-color: #EBEBEB;"></li>
@@ -97,7 +107,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <li style="background-color: #4B4B4B;"></li>
                     <li style="background-color: #292929;"></li>
                     <li style="background-color: #000;"></li>
-                    
+
                     <li style="background-color: #93221e;"></li>
                     <li style="background-color: #b92d2c;"></li>
                     <li style="background-color: #ed403c;"></li>
@@ -108,7 +118,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <li style="background-color: #f48221;"></li>
                     <li style="background-color: #fca967;"></li>
                     <li style="background-color: #fbdbc6;"></li>
-                    
+
                     <li style="background-color: #9b6702;"></li>
                     <li style="background-color: #c18210;"></li>
                     <li style="background-color: #f8a51b;"></li>
@@ -119,7 +129,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <li style="background-color: #fef102;"></li>
                     <li style="background-color: #fff685;"></li>
                     <li style="background-color: #fffbcc;"></li>
-                    
+
                     <li style="background-color: #3e7927;"></li>
                     <li style="background-color: #569834;"></li>
                     <li style="background-color: #70be44;"></li>
@@ -130,7 +140,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <li style="background-color: #02a860;"></li>
                     <li style="background-color: #63c094;"></li>
                     <li style="background-color: #c3dfd0;"></li>
-                    
+
                     <li style="background-color: #006e6f;"></li>
                     <li style="background-color: #018987;"></li>
                     <li style="background-color: #02aaad;"></li>
@@ -141,7 +151,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <li style="background-color: #0266b2;"></li>
                     <li style="background-color: #5c88c5;"></li>
                     <li style="background-color: #aec5e5;"></li>
-                    
+
                     <li style="background-color: #081c63;"></li>
                     <li style="background-color: #172e7c;"></li>
                     <li style="background-color: #27459b;"></li>
@@ -152,7 +162,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <li style="background-color: #5c3092;"></li>
                     <li style="background-color: #8069af;"></li>
                     <li style="background-color: #baaed4;"></li>
-                    
+
                     <li style="background-color: #69015a;"></li>
                     <li style="background-color: #810d70;"></li>
                     <li style="background-color: #a4228f;"></li>
@@ -167,14 +177,24 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
         </div>
         <div class="controls-group">
-            <div class="icon switch requires-selection disabled material-icons" data-group="text-align" id="align-left">format_align_left</div>
-            <div class="icon switch requires-selection disabled material-icons" data-group="text-align" id="align-center">format_align_center</div>
-            <div class="icon switch requires-selection disabled material-icons" data-group="text-align" id="align-right">format_align_right</div>
-            <div class="icon switch requires-selection disabled material-icons" data-group="text-align" id="align-justify">format_align_justify</div>
+            <div class="icon switch requires-selection disabled material-icons" data-group="text-align" id="align-left">
+                format_align_left
+            </div>
+            <div class="icon switch requires-selection disabled material-icons" data-group="text-align"
+                 id="align-center">format_align_center
+            </div>
+            <div class="icon switch requires-selection disabled material-icons" data-group="text-align"
+                 id="align-right">format_align_right
+            </div>
+            <div class="icon switch requires-selection disabled material-icons" data-group="text-align"
+                 id="align-justify">format_align_justify
+            </div>
         </div>
         <div class="controls-group">
             <div class="dropdown-wrap">
-                <div class="icon toggle requires-selection disabled dropdown-toggle color-picker material-icons">format_color_fill</div>
+                <div class="icon toggle requires-selection disabled dropdown-toggle color-picker material-icons">
+                    format_color_fill
+                </div>
                 <ul class="dropdown color" id="color-fill">
                     <li style="background-color: #FFF;"></li>
                     <li style="background-color: #EBEBEB;"></li>
@@ -186,7 +206,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <li style="background-color: #4B4B4B;"></li>
                     <li style="background-color: #292929;"></li>
                     <li style="background-color: #000;"></li>
-                    
+
                     <li style="background-color: #93221e;"></li>
                     <li style="background-color: #b92d2c;"></li>
                     <li style="background-color: #ed403c;"></li>
@@ -197,7 +217,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <li style="background-color: #f48221;"></li>
                     <li style="background-color: #fca967;"></li>
                     <li style="background-color: #fbdbc6;"></li>
-                    
+
                     <li style="background-color: #9b6702;"></li>
                     <li style="background-color: #c18210;"></li>
                     <li style="background-color: #f8a51b;"></li>
@@ -208,7 +228,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <li style="background-color: #fef102;"></li>
                     <li style="background-color: #fff685;"></li>
                     <li style="background-color: #fffbcc;"></li>
-                    
+
                     <li style="background-color: #3e7927;"></li>
                     <li style="background-color: #569834;"></li>
                     <li style="background-color: #70be44;"></li>
@@ -219,7 +239,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <li style="background-color: #02a860;"></li>
                     <li style="background-color: #63c094;"></li>
                     <li style="background-color: #c3dfd0;"></li>
-                    
+
                     <li style="background-color: #006e6f;"></li>
                     <li style="background-color: #018987;"></li>
                     <li style="background-color: #02aaad;"></li>
@@ -230,7 +250,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <li style="background-color: #0266b2;"></li>
                     <li style="background-color: #5c88c5;"></li>
                     <li style="background-color: #aec5e5;"></li>
-                    
+
                     <li style="background-color: #081c63;"></li>
                     <li style="background-color: #172e7c;"></li>
                     <li style="background-color: #27459b;"></li>
@@ -241,7 +261,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <li style="background-color: #5c3092;"></li>
                     <li style="background-color: #8069af;"></li>
                     <li style="background-color: #baaed4;"></li>
-                    
+
                     <li style="background-color: #69015a;"></li>
                     <li style="background-color: #810d70;"></li>
                     <li style="background-color: #a4228f;"></li>
@@ -267,7 +287,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <li style="background-color: #4B4B4B;"></li>
                     <li style="background-color: #292929;"></li>
                     <li style="background-color: #000;"></li>
-                    
+
                     <li style="background-color: #93221e;"></li>
                     <li style="background-color: #b92d2c;"></li>
                     <li style="background-color: #ed403c;"></li>
@@ -278,7 +298,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <li style="background-color: #f48221;"></li>
                     <li style="background-color: #fca967;"></li>
                     <li style="background-color: #fbdbc6;"></li>
-                    
+
                     <li style="background-color: #9b6702;"></li>
                     <li style="background-color: #c18210;"></li>
                     <li style="background-color: #f8a51b;"></li>
@@ -289,7 +309,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <li style="background-color: #fef102;"></li>
                     <li style="background-color: #fff685;"></li>
                     <li style="background-color: #fffbcc;"></li>
-                    
+
                     <li style="background-color: #3e7927;"></li>
                     <li style="background-color: #569834;"></li>
                     <li style="background-color: #70be44;"></li>
@@ -300,7 +320,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <li style="background-color: #02a860;"></li>
                     <li style="background-color: #63c094;"></li>
                     <li style="background-color: #c3dfd0;"></li>
-                    
+
                     <li style="background-color: #006e6f;"></li>
                     <li style="background-color: #018987;"></li>
                     <li style="background-color: #02aaad;"></li>
@@ -311,7 +331,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <li style="background-color: #0266b2;"></li>
                     <li style="background-color: #5c88c5;"></li>
                     <li style="background-color: #aec5e5;"></li>
-                    
+
                     <li style="background-color: #081c63;"></li>
                     <li style="background-color: #172e7c;"></li>
                     <li style="background-color: #27459b;"></li>
@@ -322,7 +342,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <li style="background-color: #5c3092;"></li>
                     <li style="background-color: #8069af;"></li>
                     <li style="background-color: #baaed4;"></li>
-                    
+
                     <li style="background-color: #69015a;"></li>
                     <li style="background-color: #810d70;"></li>
                     <li style="background-color: #a4228f;"></li>
@@ -350,8 +370,11 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="icon button requires-selection disabled material-icons" id="border-right">border_right</div>
             <div class="icon button requires-selection disabled material-icons" id="border-bottom">border_bottom</div>
             <div class="icon button requires-selection disabled material-icons" id="border-left">border_left</div>
-            <div class="icon button requires-selection disabled material-icons" id="border-horizontal">border_horizontal</div>
-            <div class="icon button requires-selection disabled material-icons" id="border-vertical">border_vertical</div>
+            <div class="icon button requires-selection disabled material-icons" id="border-horizontal">
+                border_horizontal
+            </div>
+            <div class="icon button requires-selection disabled material-icons" id="border-vertical">border_vertical
+            </div>
             <div class="icon button requires-selection disabled material-icons" id="border-inner">border_inner</div>
             <div class="icon button requires-selection disabled material-icons" id="border-outer">border_outer</div>
             <div class="icon button requires-selection disabled material-icons" id="border-all">border_all</div>
@@ -359,25 +382,31 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
     </li>
     <li>
-        <div class="button requires-selection disabled text-button" id="copy"><i class="material-icons">content_copy</i>Copy</div>
+        <div class="button requires-selection disabled text-button" id="copy"><i class="material-icons">content_copy</i>Copy
+        </div>
         <div class="dropdown-wrap">
-            <div class="toggle dropdown-toggle requires-selection requires-copied-cells disabled action-select"><i class="material-icons">content_paste</i>Paste</div>
+            <div class="toggle dropdown-toggle requires-selection requires-copied-cells disabled action-select"><i
+                    class="material-icons">content_paste</i>Paste
+            </div>
             <ul class="dropdown select" id="paste">
                 <li data-value="right">Push cells right</li>
                 <li data-value="down">Push cells down</li>
                 <li data-value="replace">Replace cells</li>
             </ul>
         </div>
-        <div class="button requires-selection disabled text-button" id="clear"><i class="material-icons">clear</i>Clear</div>
+        <div class="button requires-selection disabled text-button" id="clear"><i class="material-icons">clear</i>Clear
+        </div>
         <div class="dropdown-wrap">
-            <div class="toggle dropdown-toggle requires-selection disabled action-select"><i class="material-icons">publish</i>Insert</div>
+            <div class="toggle dropdown-toggle requires-selection disabled action-select"><i class="material-icons">publish</i>Insert
+            </div>
             <ul class="dropdown select" id="insert">
                 <li data-value="right">Push cells right</li>
                 <li data-value="down">Push cells down</li>
             </ul>
         </div>
         <div class="dropdown-wrap">
-            <div class="toggle dropdown-toggle requires-selection disabled action-select"><i class="material-icons">delete</i>Delete</div>
+            <div class="toggle dropdown-toggle requires-selection disabled action-select"><i class="material-icons">delete</i>Delete
+            </div>
             <ul class="dropdown select" id="delete">
                 <li data-value="left">Shift cells left</li>
                 <li data-value="up">Shift cells up</li>
@@ -395,7 +424,8 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="controls-group">
             <div class="button text-button" id="import"><i class="material-icons">file_upload</i>Import</div>
             <div class="dropdown-wrap">
-                <div class="toggle dropdown-toggle action-select"><i class="material-icons">file_download</i>Export</div>
+                <div class="toggle dropdown-toggle action-select"><i class="material-icons">file_download</i>Export
+                </div>
                 <ul class="dropdown select" id="export">
                     <li data-value="csv">.csv (Values only)</li>
                     <li data-value="xlsx">.xlsx</li>
