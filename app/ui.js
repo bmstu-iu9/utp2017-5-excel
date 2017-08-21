@@ -23,21 +23,7 @@ const ui = {
                 toolbars[index].classList.add("active");
             }));
 
-        { // Printing cells
-            const table = document.querySelector("#table");
-            const headingRow = document.createElement("tr");
-            table.appendChild(headingRow);
-            for (let j = 0; j <= ui.DEFAULT_COLUMNS; j++) {
-                let cell;
-                if (j) cell = ui._createColumnHeader(j);
-                else {
-                    cell = document.createElement("td");
-                    cell.classList.add("row-header");
-                }
-                headingRow.appendChild(cell);
-            }
-            for (let i = 1; i <= ui.DEFAULT_ROWS; i++) table.appendChild(ui._createRow(i));
-        }
+        ui.displayTable();
 
         { // Making cells resizable
             const dragGuideVertical = document.getElementById("drag-guide-vertical");
@@ -399,6 +385,57 @@ const ui = {
                 }
             });
         }
+
+        { // Import and export
+            document.getElementById("import").addEventListener("click", () => {
+                document.getElementById("file-form").reset();
+                document.getElementById("file").click();
+            });
+            document.getElementById("file").addEventListener("change", function() {
+                if (!this.files || !this.files.length) return;
+                const file = this.files[0];
+                document.getElementById("filename").value = file.name.substring(0, file.name.lastIndexOf(".")) || file.name;
+                const spreadsheet = new Spreadsheet();
+                ui.clearTable();
+                ui.attach(spreadsheet);
+                switch (file.name.split(".").pop()) {
+                    case "csv":
+                        const fileReader = new FileReader();
+                        fileReader.onload = content => spreadsheet.fromCSV(content);
+                        fileReader.readAsText(file);
+                        break;
+                    case "xlsx":
+                        const manager = new XLSXManager();
+                        manager.setSpreadsheet(spreadsheet);
+                        manager.fill();
+                        break;
+                }
+            });
+            document.getElementById("export").addEventListener("change", event => {
+                let promise;
+                switch (event.detail.value) {
+                    case "csv":
+                        promise = new Promise(resolve => resolve(new Blob([ui.spreadsheet.toCSV()], {
+                            type: "text/csv;charset=utf-8"
+                        })));
+                        break;
+                    case "xlsx":
+                        const manager = new XLSXManager();
+                        manager.setSpreadsheet(ui.spreadsheet);
+                        promise = manager.generate();
+                        break;
+                }
+                promise.then(blob => {
+                    const a = document.createElement("a");
+                    a.href = URL.createObjectURL(blob);
+                    a.download = document.getElementById("filename").value + "." + event.detail.value;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                }).catch(error => console.log(error));
+            });
+        }
+
     },
 
     /**
@@ -505,6 +542,53 @@ const ui = {
         }
         return row;
 
+    },
+
+    /**
+     * Prints an empty table
+     */
+    displayTable() {
+        const table = document.querySelector("#table");
+        const headingRow = document.createElement("tr");
+        table.appendChild(headingRow);
+        for (let j = 0; j <= ui.DEFAULT_COLUMNS; j++) {
+            let cell;
+            if (j) cell = ui._createColumnHeader(j);
+            else {
+                cell = document.createElement("td");
+                cell.classList.add("row-header");
+            }
+            headingRow.appendChild(cell);
+        }
+        for (let i = 1; i <= ui.DEFAULT_ROWS; i++) table.appendChild(ui._createRow(i));
+    },
+
+    /**
+     * Displays a new blank table
+     */
+    clearTable() {
+        document.querySelectorAll("#table tr").forEach(row => row.parentElement.removeChild(row));
+        if(ui.selection.exists()) {
+            ui.selection.clear();
+            document.querySelectorAll(".requires-selection").forEach(element => element.classList.add("disabled"));
+        }
+        ui.displayTable();
+    },
+
+    /**
+     * Gets table width
+     * @returns {number}
+     */
+    tableWidth() {
+        return document.querySelectorAll("#table tr").length;
+    },
+
+    /**
+     * Gets table height
+     * @returns {Number}
+     */
+    tableHeight() {
+        return document.querySelector("#table tr").children.length;
     },
 
     /**

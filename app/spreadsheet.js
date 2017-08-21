@@ -145,9 +145,7 @@ const Spreadsheet = class extends EventManager {
      * @returns {string} Formula
      */
     getFormula(i, j) {
-
         return this._cellExists(i, j) ? this.cells[i][j].formula : "";
-
     }
 
     /**
@@ -413,6 +411,9 @@ Spreadsheet.FormulaSyntaxError = class extends Spreadsheet.FormulaError {
 
 };
 
+/**
+ * @class represents cell
+ */
 Spreadsheet._Cell = class {
 
     /**
@@ -528,6 +529,8 @@ Spreadsheet._CellReference = class {
      * @constructor
      * @param {String} cell name, letter/s + number/s
      * @param {int} position
+     * @param {int} rowFixed
+     * @param {int} columnFixed
      */
     constructor(cell, position, rowFixed, columnFixed) {
         let column = 0;
@@ -948,7 +951,7 @@ Spreadsheet._Parser = class {
             case Spreadsheet._Token.Tag.LESS:
                 console.log("< ComparisonOperator> :== \"<\"");
                 this.token = this.token.next();
-                return Spreadsheet._Function.LN;
+                return Spreadsheet._Function.LT;
             case Spreadsheet._Token.Tag.GREATER_OR_EQUALS:
                 console.log("< ComparisonOperator> :== \">=\"");
                 this.token = this.token.next();

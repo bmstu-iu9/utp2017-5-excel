@@ -830,5 +830,259 @@ Spreadsheet._Function = Object.freeze({
                 throw new Spreadsheet.ArgumentTypeError(this.position);
             }
         }, 0);
+    },
+
+    /**
+     * Returns multiplication of given arguments
+     * @param args
+     * @returns int
+     * @function
+     */
+    PRODUCT(...args) {
+        if (args.length < 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        return args.reduce((sum, element) => {
+            if (element instanceof Spreadsheet.Table) {
+                let rangeSum = 1;
+                element.forEachValue(cell => {
+                    if (typeof cell !== 'number') throw new Spreadsheet.ArgumentTypeError(this.position);
+                    rangeSum *= cell;
+                });
+                return sum * rangeSum;
+            } else if (typeof element === "number") {
+                return sum * element;
+            } else {
+                throw new Spreadsheet.ArgumentTypeError(this.position);
+            }
+        }, 1);
+    },
+
+    /**
+     * Returns number of columns in range
+     * @param range
+     * @returns int
+     * @function
+     */
+    COLUMNS(range) {
+        if (!range instanceof Spreadsheet.Table) throw new Spreadsheet.ArgumentTypeError(this.position);
+        return range.table.length
+    },
+
+    /**
+     * Returns number of rows in range
+     * @param range
+     * @returns int
+     * @function
+     */
+    ROWS(range) {
+        if (!range instanceof Spreadsheet.Table) throw new Spreadsheet.ArgumentTypeError(this.position);
+        return range.table.length > 0 ? range.table[0].length : 0
+    },
+
+    /**
+     * Returns average of given arguments
+     * @param args
+     * @returns int
+     * @function
+     */
+    AVERAGE(...args) {
+        if (args.length < 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        return Spreadsheet._Function.SUM(...args)/Spreadsheet._Function.COUNT(...args);
+    },
+
+    /**
+     * Returns number of given arguments of type number
+     * @param args
+     * @returns int
+     * @function
+     */
+    COUNT(...args) {
+        console.log("COUNT");
+        console.log(args);
+        if (args.length < 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        return args.reduce((sum, element) => {
+            if (element instanceof Spreadsheet.Table) {
+                let rangeSum = 0;
+                element.forEachValue(cell => {
+                    if (typeof cell === 'number') {
+                        rangeSum += cell;
+                    }
+                });
+                return rangeSum;
+            } else if (typeof element === "number") {
+                return sum + 1;
+            } else {
+                return sum;
+            }
+        }, 0);
+    },
+
+    /**
+     * Returns number of different values
+     * @param args
+     * @returns int
+     * @function
+     */
+    COUNTUNIQUE(...args) {
+        if (args.length < 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        let set = new Set();
+        args.forEach(function (element) {
+            if (element instanceof Spreadsheet.Table) {
+                element.forEachValue(cell => {
+                    set.add(cell);
+                });
+            } else {
+                set.add(element);
+            }
+        });
+        return set.size;
+    },
+
+    /**
+     * Returns maximum number or string
+     * @param args
+     * @returns int | string
+     * @function
+     */
+    MAX(...args) {
+        if (args.length < 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        let set = new Set();
+        args.forEach(function (element) {
+            if (element instanceof Spreadsheet.Table) {
+                element.forEachValue(cell => {
+                    set.add(cell);
+                });
+            } else {
+                set.add(element);
+            }
+        });
+        if (set.length < 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        let max =  Array.from(set.values())[0];
+        if (typeof max !== 'number' && typeof max !== 'string') throw new Spreadsheet.ArgumentTypeError(this.position);
+        set.forEach(function (element) {
+            if (typeof element === typeof max) {
+                if (element > max) max = element;
+            } else {
+                throw new Spreadsheet.ArgumentTypeError(this.position);
+            }
+        });
+        return max;
+    },
+
+    /**
+     * Returns minimum number or string
+     * @param args
+     * @returns int | string
+     * @function
+     */
+    MIN(...args) {
+        if (args.length < 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        let set = new Set();
+        args.forEach(function (element) {
+            if (element instanceof Spreadsheet.Table) {
+                element.forEachValue(cell => {
+                    set.add(cell);
+                });
+            } else {
+                set.add(element);
+            }
+        });
+        if (set.length < 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        let min = Array.from(set.values())[0];
+        if (typeof min !== 'number' && typeof min !== 'string') throw new Spreadsheet.ArgumentTypeError(this.position);
+        set.forEach(function (element) {
+            if (typeof element === typeof min) {
+                if (element < min) min = element;
+            } else {
+                throw new Spreadsheet.ArgumentTypeError(this.position);
+            }
+        });
+        return min;
+    },
+
+    /**
+     * Returns median of given arguments
+     * @param args
+     * @returns int | string
+     * @function
+     */
+    MEDIAN(...args) {
+        if (args.length < 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        let values = [];
+        args.forEach(function (element) {
+            if (element instanceof Spreadsheet.Table) {
+                element.forEachValue(cell => {
+                    values.push(cell);
+                });
+            } else if (typeof element === "number") {
+                values.push(element)
+            } else {
+                throw new Spreadsheet.ArgumentTypeError(this.position);
+            }
+        });
+        values.sort();
+        if (values.length % 2 === 1) {
+            return values[parseInt(values.length / 2)];
+        }
+        return (values[values.length / 2] + values[values.length / 2 - 1])/2;
+    },
+
+    /**
+     * Returns mode of given arguments
+     * @param args
+     * @returns int | string
+     * @function
+     */
+    MODE(...args) {
+        if (args.length < 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        let map = new Map();
+        args.forEach(function (element) {
+            if (element instanceof Spreadsheet.Table) {
+                element.forEachValue(cell => {
+                    if (typeof cell === "number") {
+                        if (map.get(cell)) {
+                            map.set(cell, map.get(cell)+1);
+                        } else {
+                            map.set(cell, 1);
+                        }
+                    } else {
+                        throw new Spreadsheet.ArgumentTypeError(this.position);
+                    }
+                });
+            } else if (typeof element === "number") {
+                console.log(map.get(element));
+                if (map.get(element)) {
+                    map.set(element, map.get(element)+1);
+                } else {
+                    map.set(element, 1);
+                }
+            } else {
+                throw new Spreadsheet.ArgumentTypeError(this.position);
+            }
+        });
+        const keys = Array.from(map.keys());
+        let key = keys[0];
+        keys.forEach((a) => {
+            if (map.get(a) > map.get(key)) key = a;
+        });
+        return key;
+    },
+
+    /**
+     * Returns value of table at given coordinates
+     * @param range
+     * @param row
+     * @param column
+     * @returns int | string | boolean
+     * @function
+     */
+    INDEX(range, row, column) {
+        if (!range instanceof Spreadsheet.Table || typeof row !== 'number' || typeof column !== 'number') {
+            throw new Spreadsheet.ArgumentTypeError(this.position);
+        }
+        if (column < range.table.length && row < range.table[0].length) {
+            return range.table[column][row];
+        } else {
+            throw new Spreadsheet.FormulaError(`Table index out of range`, this.position);
+        }
     }
 });

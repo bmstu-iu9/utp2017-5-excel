@@ -18,11 +18,13 @@
     <script src="app/ui.js"></script>
     <script src="app/spreadsheet.js"></script>
     <script src="app/spreadsheet-functions.js"></script>
-    <script src="app/lib/jszip.js"></script>
-    <script src="app/xlsx-manager.js"></script>
+    <script src="app/libs/jszip.js"></script>
+    <script src="app/fs.js"></script>
     <script>
+
         "use strict";
         document.addEventListener("DOMContentLoaded", () => {
+
             ui.init();
 
             // Creating new Spreadsheet and attaching it to User Interface
@@ -30,6 +32,7 @@
             ui.attach(spreadsheet);
 
         });
+
     </script>
 
 </head>
@@ -424,7 +427,9 @@
                     <li data-value="xlsx">.xlsx</li>
                 </ul>
             </div>
-            <input type="file" id="file" class="hidden">
+            <form id="file-form" class="hidden">
+                <input type="file" accept=".csv,.xlsx" id="file">
+            </form>
         </div>
     </li>
 </ul>
