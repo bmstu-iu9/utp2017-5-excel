@@ -23,7 +23,6 @@
     <script>
 
         "use strict";
-        let manager = new XLSXManager();
         document.addEventListener("DOMContentLoaded", () => {
 
             ui.init();
@@ -31,13 +30,9 @@
             // Creating new Spreadsheet and attaching it to User Interface
             const spreadsheet = new Spreadsheet();
             ui.attach(spreadsheet);
-            manager.setSpreadsheet(spreadsheet);
 
         });
 
-        function test() {
-            console.log(manager.generateB64()); // use generate() to get blob
-        }
     </script>
 
 </head>
@@ -432,7 +427,9 @@
                     <li data-value="xlsx">.xlsx</li>
                 </ul>
             </div>
-            <input type="file" id="file" class="hidden">
+            <form id="file-form" class="hidden">
+                <input type="file" accept=".csv,.xlsx" id="file">
+            </form>
         </div>
     </li>
 </ul>
