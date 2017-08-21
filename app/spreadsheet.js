@@ -940,23 +940,23 @@ Spreadsheet._Parser = class {
             case Spreadsheet._Token.Tag.EQUALS:
                 console.log("< ComparisonOperator> :== \"=\"");
                 this.token = this.token.next();
-                return Spreadsheet._Function.EQUALS;
+                return Spreadsheet._Function.EQ ;
             case Spreadsheet._Token.Tag.LESS_OR_EQUALS:
                 console.log("< ComparisonOperator> :== \"<=\"");
                 this.token = this.token.next();
-                return Spreadsheet._Function.LESSOREQUALS;
+                return Spreadsheet._Function.LTE;
             case Spreadsheet._Token.Tag.LESS:
                 console.log("< ComparisonOperator> :== \"<\"");
                 this.token = this.token.next();
-                return Spreadsheet._Function.LESS;
+                return Spreadsheet._Function.LN;
             case Spreadsheet._Token.Tag.GREATER_OR_EQUALS:
                 console.log("< ComparisonOperator> :== \">=\"");
                 this.token = this.token.next();
-                return Spreadsheet._Function.GREATEROREQUALS;
+                return Spreadsheet._Function.GTE ;
             case Spreadsheet._Token.Tag.GREATER:
                 console.log("< ComparisonOperator> :== \">\"");
                 this.token = this.token.next();
-                return Spreadsheet._Function.GREATER;
+                return Spreadsheet._Function.GT;
             default: return false;
         }
     }
@@ -985,7 +985,7 @@ Spreadsheet._Parser = class {
             console.log("< Terms> :== \"-\" <Term> <Terms>");
             this.token = this.token.next();
             rightArg = this.parseTerm();
-            res = new Spreadsheet._Expression(Spreadsheet._Function.SUBTRACT, [leftArg, rightArg], currentPosition);
+            res = new Spreadsheet._Expression(Spreadsheet._Function.MINUS, [leftArg, rightArg], currentPosition);
             return this.parseTerms(res);
         } else if (this.token.tag === Spreadsheet._Token.Tag.PLUS) {
             console.log("< Terms> :== \"+\" <Term> <Terms>");
@@ -1076,7 +1076,7 @@ Spreadsheet._Parser = class {
             console.log("< Factor> :== \"-\" <Factor>");
             res = this.token.start;
             this.token = this.token.next();
-            return new Spreadsheet._Expression(Spreadsheet._Function.NEGATE, this.parseFactor(), res);
+            return new Spreadsheet._Expression(Spreadsheet._Function.UNMINUS, this.parseFactor(), res);
         } else {
             throw new Spreadsheet.FormulaError(`Unexpected ${this.token.tag}`, this.token.start.index+1);
         }
@@ -1094,9 +1094,9 @@ Spreadsheet._Parser = class {
         this.expect(Spreadsheet._Token.Tag.IDENTIFIER);
         const index = this.token.start.index;
         const callArgsOrEndOfRange = this.parseCallOrSpan();
-
+        const regExps = /^(\$?)([A-Z]+)(\$?)([1-9][0-9]*)$/i;
         if (callArgsOrEndOfRange === null) {
-            let match = res.match(/^(\$?)([A-Z]+)(\$?)([1-9][0-9]*)$/i);
+            let match = res.match(regExps);
             if (match) {
                 return new Spreadsheet._CellReference(match[2]+match[4], currentPosition.index + 1, match[3] === '$', match[1] === '$');
             } else {
@@ -1104,14 +1104,14 @@ Spreadsheet._Parser = class {
             }
         } else if (typeof callArgsOrEndOfRange === 'string') {
             let start = undefined;
-            let match = res.match(/^(\$?)([A-Z]+)(\$?)([1-9][0-9]*)$/i);
+            let match = res.match(regExps);
             if (match) {
                 start = new Spreadsheet._CellReference(match[2]+match[4], currentPosition.index + 1, match[3] === '$', match[1] === '$');
             } else {
                 throw new Spreadsheet.FormulaError(`Undefined function '${res}'`, index + 1 - res.length);
             }
             let end = undefined;
-            match = callArgsOrEndOfRange.match(/^(\$?)([A-Z]+)(\$?)([1-9][0-9]*)$/i);
+            match = callArgsOrEndOfRange.match(regExps);
             if (match) {
                 end = new Spreadsheet._CellReference(match[2]+match[4], this.token.start.index + 1, match[3] === '$', match[1] === '$');
             } else {
@@ -1365,3 +1365,63 @@ Spreadsheet._CellGraph.Vertex = class {
         if (this.cycle.indexOf(this) === -1) this.cycle.push(this);
     }
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

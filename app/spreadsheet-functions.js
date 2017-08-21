@@ -807,26 +807,28 @@ Spreadsheet._Function = Object.freeze({
         if (condition) return ifTrue;
         return ifFalse;
     },
-    
+
+    /**
+     * Returns sum of given arguments
+     * @param args
+     * @returns int
+     * @function
+     */
     SUM(...args) {
-        console.log(args);
         if (args.length < 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        const p = this.position;
         return args.reduce((sum, element) => {
-            if (element instanceof Spreadsheet._Table) {
+            if (element instanceof Spreadsheet.Table) {
                 let rangeSum = 0;
                 element.forEachValue(cell => {
-                    if (typeof cell !== 'number') throw new Spreadsheet.ArgumentTypeError(p);
+                    if (typeof cell !== 'number') throw new Spreadsheet.ArgumentTypeError(this.position);
                     rangeSum += cell;
                 });
                 return sum + rangeSum;
             } else if (typeof element === "number") {
                 return sum + element;
             } else {
-                throw new Spreadsheet.ArgumentTypeError(p);
+                throw new Spreadsheet.ArgumentTypeError(this.position);
             }
         }, 0);
     }
 });
-
-
