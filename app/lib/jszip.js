@@ -458,7 +458,7 @@ https://github.com/nodeca/pako/blob/master/LICENSE
              * Transform an integer into a string in hexadecimal.
              * @private
              * @param {number} dec the number to convert.
-             * @param {number} bytes the number of bytes to generateB64.
+             * @param {number} bytes the number of bytes to generate.
              * @returns {string} the result.
              */
             var decToHex = function (dec, bytes) {
@@ -1011,9 +1011,9 @@ https://github.com/nodeca/pako/blob/master/LICENSE
             };
 
             /**
-             * Create a worker to generateB64 a zip file.
+             * Create a worker to generate a zip file.
              * @param {JSZip} zip the JSZip instance at the right root level.
-             * @param {Object} options to generateB64 the zip file.
+             * @param {Object} options to generate the zip file.
              * @param {String} comment the comment to use.
              */
             exports.generateWorker = function (zip, options, comment) {
@@ -1364,7 +1364,7 @@ https://github.com/nodeca/pako/blob/master/LICENSE
             var defaults = require('./defaults');
             var CompressedObject = require('./compressedObject');
             var ZipObject = require('./zipObject');
-            var generate = require("./generateB64");
+            var generate = require("./generate");
             var nodejsUtils = require("./nodejsUtils");
             var NodejsStreamInputAdapter = require("./nodejs/NodejsStreamInputAdapter");
 
@@ -1660,7 +1660,7 @@ https://github.com/nodeca/pako/blob/master/LICENSE
 
                 /**
                  * Generate the complete zip file
-                 * @param {Object} options the options to generateB64 the zip file :
+                 * @param {Object} options the options to generate the zip file :
                  * - compression, "STORE" by default.
                  * - type, "base64" by default. Values are : string, base64, uint8array, arraybuffer, blob.
                  * @return {String|Uint8Array|ArrayBuffer|Buffer|Blob} the zip file
@@ -1671,7 +1671,7 @@ https://github.com/nodeca/pako/blob/master/LICENSE
 
                 /**
                  * Generate the complete zip file as an internal stream.
-                 * @param {Object} options the options to generateB64 the zip file :
+                 * @param {Object} options the options to generate the zip file :
                  * - compression, "STORE" by default.
                  * - type, "base64" by default. Values are : string, base64, uint8array, arraybuffer, blob.
                  * @return {StreamHelper} the streamed zip file.
@@ -2808,7 +2808,7 @@ https://github.com/nodeca/pako/blob/master/LICENSE
             exports.string = true;
             exports.arraybuffer = typeof ArrayBuffer !== "undefined" && typeof Uint8Array !== "undefined";
             exports.nodebuffer = typeof Buffer !== "undefined";
-// contains true if JSZip can read/generateB64 Uint8Array, false otherwise.
+// contains true if JSZip can read/generate Uint8Array, false otherwise.
             exports.uint8array = typeof Uint8Array !== "undefined";
 
             if (typeof ArrayBuffer === "undefined") {
@@ -3260,7 +3260,7 @@ https://github.com/nodeca/pako/blob/master/LICENSE
                 },
                 /**
                  * Call String.fromCharCode on every item in the array.
-                 * This is the naive implementation, which generateB64 A LOT of intermediate string.
+                 * This is the naive implementation, which generate A LOT of intermediate string.
                  * This should be used when everything else fail.
                  * @param {Array|ArrayBuffer|Uint8Array|Buffer} array the array to transform.
                  * @return {String} the result.
@@ -3308,7 +3308,7 @@ https://github.com/nodeca/pako/blob/master/LICENSE
                 // see http://jsperf.com/converting-a-uint8array-to-a-string/2
                 // but the stack is limited (and we can get huge arrays !).
                 //
-                // result += String.fromCharCode(array[i]); generateB64 too many strings !
+                // result += String.fromCharCode(array[i]); generate too many strings !
                 //
                 // This code is inspired by http://jsperf.com/arraybuffer-to-string-apply-performance/2
                 // TODO : we now have workers that split the work. Do we still need that ?
@@ -7238,7 +7238,7 @@ https://github.com/nodeca/pako/blob/master/LICENSE
 
 
             /* ===========================================================================
- * For Z_RLE, simply look for runs of bytes, generateB64 matches only of distance
+ * For Z_RLE, simply look for runs of bytes, generate matches only of distance
  * one.  Do not maintain a hash table.  (It will be regenerated if this run of
  * deflate switches away from Z_RLE.)
  */
@@ -10622,7 +10622,7 @@ exports.inflateUndermine = inflateUndermine;
                     /* incomplete set */
                 }
 
-                /* generateB64 offsets into symbol table for each length for sorting */
+                /* generate offsets into symbol table for each length for sorting */
                 offs[1] = 0;
                 for (len = 1; len < MAXBITS; len++) {
                     offs[len + 1] = offs[len] + count[len];
@@ -11235,7 +11235,7 @@ exports.inflateUndermine = inflateUndermine;
                 var n;
                 /* code index */
 
-                /* The distribution counts are first used to generateB64 the code values
+                /* The distribution counts are first used to generate the code values
    * without bit reversal.
    */
                 for (bits = 1; bits <= MAX_BITS; bits++) {
@@ -11650,11 +11650,11 @@ exports.inflateUndermine = inflateUndermine;
                 s.heap[--s.heap_max] = s.heap[1/*SMALLEST*/];
 
                 /* At this point, the fields freq and dad are set. We can now
-   * generateB64 the bit lengths.
+   * generate the bit lengths.
    */
                 gen_bitlen(s, desc);
 
-                /* The field len is now set, we can generateB64 the bit codes */
+                /* The field len is now set, we can generate the bit codes */
                 gen_codes(tree, max_code, s.bl_count);
             }
 

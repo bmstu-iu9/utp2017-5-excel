@@ -18,26 +18,18 @@
     <script src="app/ui.js"></script>
     <script src="app/spreadsheet.js"></script>
     <script src="app/spreadsheet-functions.js"></script>
-    <script src="app/libs/jszip.js"></script>
-    <script src="app/fs.js"></script>
+    <script src="app/lib/jszip.js"></script>
+    <script src="app/xlsx-manager.js"></script>
     <script>
-
         "use strict";
-        let manager = new XLSXManager();
         document.addEventListener("DOMContentLoaded", () => {
-
             ui.init();
 
             // Creating new Spreadsheet and attaching it to User Interface
             const spreadsheet = new Spreadsheet();
             ui.attach(spreadsheet);
-            manager.setSpreadsheet(spreadsheet);
 
         });
-
-        function test() {
-            console.log(manager.generateB64()); // use generate() to get blob
-        }
     </script>
 
 </head>
