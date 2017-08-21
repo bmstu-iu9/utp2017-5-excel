@@ -229,7 +229,7 @@ const Spreadsheet = class extends EventManager {
                     }
                     cellsValues.push(values);
                 }
-                cell.value = new Spreadsheet._Table(cellsValues)
+                cell.value = new Spreadsheet.Table(cellsValues)
             } else {
                 cell.value = cell.expression;
             }
@@ -439,12 +439,22 @@ Spreadsheet._Cell = class {
  * @class Represents cell range matrix
  *
  */
-Spreadsheet._Table = class {
-
+Spreadsheet.Table = class {
+    /**
+     * @constructor
+     * @param {Array} table of values
+     */
     constructor(table) {
+        /**
+         * @type {Array} table
+         */
         this.table = table
     }
 
+    /**
+     * Apply given function to all values
+     * @param {function} callback
+     */
     forEachValue(callback) {
         for (let i = 0; i < this.table.length; i++) {
             for (let j = 0; j < this.table[i].length; j++) {
@@ -466,19 +476,44 @@ Spreadsheet._Range = class {
      * @param {Spreadsheet._CellReference} end of range
      */
     constructor(start, end) {
+        /**
+         * @type {Spreadsheet._CellReference} start
+         */
         this.start = start;
+        /**
+         * @type {Spreadsheet._CellReference} end
+         */
         this.end = end;
     }
 
+    /**
+     * Calculate start row
+     * @returns {int} row of top left range's corner
+     */
     getStartRow() {
         return Math.min(this.start.row, this.end.row);
     }
+    
+    /**
+     * Calculate start column
+     * @returns {int} column of top left range's corner
+     */
     getStartColumn() {
         return Math.min(this.start.column, this.end.column);
     }
+    
+    /**
+     * Calculate end row
+     * @returns {int} row of bottom right range's corner
+     */
     getEndRow() {
         return Math.max(this.start.row, this.end.row);
     }
+    
+    /**
+     * Calculate end column
+     * @returns {int} column of bottom right range's corner
+     */
     getEndColumn() {
         return Math.max(this.start.column, this.end.column);
     }
@@ -494,7 +529,7 @@ Spreadsheet._CellReference = class {
      * @param {String} cell name, letter/s + number/s
      * @param {int} position
      */
-    constructor(cell, position, rowFixed, columnfixed) {
+    constructor(cell, position, rowFixed, columnFixed) {
         let column = 0;
         let i = 0;
         for (; cell.charCodeAt(i) > 64;  i++) {
@@ -520,7 +555,7 @@ Spreadsheet._CellReference = class {
         /**
          * @type {boolean}
          */
-        this.columnfixed = columnfixed;
+        this.columnFixed = columnFixed;
     }
 
 };
@@ -570,15 +605,13 @@ Spreadsheet._Expression = class {
                     }
                     cellsValues.push(values);
                 }
-                return new Spreadsheet._Table(cellsValues);
+                return new Spreadsheet.Table(cellsValues);
             } else {
                 return elem;
             }
         });
         return this.func.apply(this, newArgs);
     }
-
-
 };
 
 /**
@@ -753,9 +786,9 @@ Spreadsheet._Token = class {
                 }
                 break;
             default:
-                if(this.start.satisfies(/[a-zA-Z]/i)) {
+                if(this.start.satisfies(/[a-zA-Z$]/i)) {
                     this.body+=String.fromCharCode(this.start.getCharCode());
-                    this.follow = this.follow.skipWhile(/[0-9a-zA-Z]/i, this);
+                    this.follow = this.follow.skipWhile(/[0-9a-zA-Z$]/i, this);
                     let startIndex = this.start.index;
                     let endIndex = this.follow.index;
                     const identifier = this.start.formula.substr(startIndex, endIndex-startIndex);
@@ -1063,39 +1096,24 @@ Spreadsheet._Parser = class {
         const callArgsOrEndOfRange = this.parseCallOrSpan();
 
         if (callArgsOrEndOfRange === null) {
-            if (/^\$[A-Z]+\$[1-9][0-9]*$/i.test(res)) {
-                return new Spreadsheet._CellReference(res.replace('$', '').replace('$', ''), currentPosition.index + 1, true, true);
-            } else if (/^[A-Z]+\$[1-9][0-9]*$/i.test(res)) {
-                return new Spreadsheet._CellReference(res.replace('$', ''), currentPosition.index + 1, true, false);
-            } else if (/^\$[A-Z]+[1-9][0-9]*$/i.test(res)) {
-                return new Spreadsheet._CellReference(res.replace('$', ''), currentPosition.index + 1, false, true);
-            } else if (/^[A-Z]+[1-9][0-9]*$/i.test(res)) {
-                return new Spreadsheet._CellReference(res, currentPosition.index + 1, false, false);
+            let match = res.match(/^(\$?)([A-Z]+)(\$?)([1-9][0-9]*)$/i);
+            if (match) {
+                return new Spreadsheet._CellReference(match[2]+match[4], currentPosition.index + 1, match[3] === '$', match[1] === '$');
             } else {
                 throw new Spreadsheet.FormulaError(`'(' expected`, index + 1 - res.length);
             }
         } else if (typeof callArgsOrEndOfRange === 'string') {
             let start = undefined;
-            if (/^\$[A-Z]+\$[1-9][0-9]*$/i.test(res)) {
-                start = new Spreadsheet._CellReference(res.replace('$', '').replace('$', ''), currentPosition.index + 1, true, true);
-            } else if (/^[A-Z]+\$[1-9][0-9]*$/i.test(res)) {
-                start = new Spreadsheet._CellReference(res.replace('$', ''), currentPosition.index + 1, true, false);
-            } else if (/^\$[A-Z]+[1-9][0-9]*$/i.test(res)) {
-                start = new Spreadsheet._CellReference(res.replace('$', ''), currentPosition.index + 1, false, true);
-            } else if (/^[A-Z]+[1-9][0-9]*$/i.test(res)) {
-                start = new Spreadsheet._CellReference(res, currentPosition.index + 1, false, false);
+            let match = res.match(/^(\$?)([A-Z]+)(\$?)([1-9][0-9]*)$/i);
+            if (match) {
+                start = new Spreadsheet._CellReference(match[2]+match[4], currentPosition.index + 1, match[3] === '$', match[1] === '$');
             } else {
                 throw new Spreadsheet.FormulaError(`Undefined function '${res}'`, index + 1 - res.length);
             }
             let end = undefined;
-            if (/^\$[A-Z]+\$[1-9][0-9]*$/i.test(callArgsOrEndOfRange)) {
-                end = new Spreadsheet._CellReference(callArgsOrEndOfRange.replace('$', '').replace('$', ''), this.token.start.index + 1, true, true);
-            } else if (/^[A-Z]+\$[1-9][0-9]*$/i.test(callArgsOrEndOfRange)) {
-                end = new Spreadsheet._CellReference(callArgsOrEndOfRange.replace('$', ''), this.token.start.index + 1, true, false);
-            } else if (/^\$[A-Z]+[1-9][0-9]*$/i.test(callArgsOrEndOfRange)) {
-                end = new Spreadsheet._CellReference(callArgsOrEndOfRange.replace('$', ''), this.token.start.index + 1, false, true);
-            } else if (/^[A-Z]+[1-9][0-9]*$/i.test(callArgsOrEndOfRange)) {
-                end = new Spreadsheet._CellReference(callArgsOrEndOfRange, this.token.start.index + 1, false, false);
+            match = callArgsOrEndOfRange.match(/^(\$?)([A-Z]+)(\$?)([1-9][0-9]*)$/i);
+            if (match) {
+                end = new Spreadsheet._CellReference(match[2]+match[4], this.token.start.index + 1, match[3] === '$', match[1] === '$');
             } else {
                 throw new Spreadsheet.FormulaError(`Undefined function '${res}'`, index + 1 - res.length);
             }
