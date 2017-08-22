@@ -576,7 +576,7 @@ Spreadsheet._Expression = class {
      */
     constructor(func, args, position) {
         this.func = func;
-        this.args = args;
+        this.args = Array.isArray(args) ? args : [args];
         this.position = position.index + 1;
     }
     /**

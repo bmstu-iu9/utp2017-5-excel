@@ -410,8 +410,8 @@ Spreadsheet._Function = Object.freeze({
      */
     FACT(y) {
         if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        if (typeof x !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
-        const x = Math.floor(y); 
+        if (typeof y !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
+        let x = Math.floor(y); 
         if (x === 0 || x === 1) return 1;
         let factorial = 1;
         while (x > 1) {
@@ -1191,10 +1191,12 @@ Spreadsheet._Function = Object.freeze({
                 throw new Spreadsheet.ArgumentTypeError(this.position);
             }
         });
-        const keys = Array.from(map.keys());
-        let key = keys[0];
-        for (k of keys) {
-        	if (map.get(k) > map.get(key)) key = k;
+        let key = 0, value = 0;
+        for (let pair of map) {
+            if (pair[1] > value) {
+                key = pair[0];
+                value = pair[1];
+            }
         }
         return key;
     },
