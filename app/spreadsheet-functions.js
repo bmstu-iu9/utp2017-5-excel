@@ -279,12 +279,14 @@ Spreadsheet._Function = Object.freeze({
      * @param {number} x
      * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
      * @throws {Spreadsheet.ArgumentTypeError} x must be of type number
+     * @throws {Spreadsheet.FormulaError} x must be from -1 to 1
      * @returns {number}
      * @function
      */
     ACOS(x) {
         if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof x !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
+        if (Math.abs(x) > 1) throw new Spreadsheet.FormulaError("Incorrect value", this.position);
         return Math.acos(x);
     },
 
@@ -293,12 +295,14 @@ Spreadsheet._Function = Object.freeze({
      * @param {number} x
      * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
      * @throws {Spreadsheet.ArgumentTypeError} x must be of type number
+     * @throws {Spreadsheet.FormulaError} x must be from -1 to 1
      * @returns {number}
      * @function
      */
     ASIN(x) {
         if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof x !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
+        if (Math.abs(x) > 1) throw new Spreadsheet.FormulaError("Incorrect value", this.position);
         return Math.asin(x);
     },
 
@@ -349,12 +353,14 @@ Spreadsheet._Function = Object.freeze({
      * @param {number} x
      * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
      * @throws {Spreadsheet.ArgumentTypeError} x must be of type number
+     * @throws {Spreadsheet.FormulaError} x must not be multiple of PI
      * @returns {number}
      * @function
      */
     COT(x) {
         if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof x !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
+        if (Number.isInteger(x/PI)) throw new Spreadsheet.FormulaError("Incorrect value", this.position);
         return Math.cos(x)/Math.sin(x);
     },
 
@@ -395,7 +401,7 @@ Spreadsheet._Function = Object.freeze({
      * @function
      */
     EXP(x = 1) {
-        if (arguments.length !== 1 && arguments.length !== 0) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        if (arguments.length > 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof x !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
         return Math.exp(x);
     },
@@ -408,10 +414,9 @@ Spreadsheet._Function = Object.freeze({
      * @returns {int}
      * @function
      */
-    FACT(y) {
+    FACT(x) {
         if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        if (typeof y !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
-        let x = Math.floor(y); 
+        if (typeof x !== "number" || !Number.isInteger(x)) throw new Spreadsheet.ArgumentTypeError(this.position);
         if (x === 0 || x === 1) return 1;
         let factorial = 1;
         while (x > 1) {
@@ -446,7 +451,7 @@ Spreadsheet._Function = Object.freeze({
      */
     GCD(x, y) {
         if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        if (!Number.isInteger(x) || !Number.isInteger(y)) throw new Spreadsheet.ArgumentTypeError(this.position);
+        if (typeof x !== "number" || typeof y !== "number" || !Number.isInteger(x) || !Number.isInteger(y)) throw new Spreadsheet.ArgumentTypeError(this.position);
         while (y) {
             let z = x%y;
             x = y;
@@ -465,7 +470,7 @@ Spreadsheet._Function = Object.freeze({
      */
     ISEVEN(x) {
         if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        if (typeof x !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
+        if (typeof x !== "number" || !Number.isInteger(x)) throw new Spreadsheet.ArgumentTypeError(this.position);
         return x%2 === 0;
     },
 
@@ -479,7 +484,7 @@ Spreadsheet._Function = Object.freeze({
      */
     ISODD(x) {
         if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        if (typeof x !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
+        if (typeof x !== "number"  || !Number.isInteger(x)) throw new Spreadsheet.ArgumentTypeError(this.position);
         return x%2 === 1;
     },
 
@@ -494,7 +499,7 @@ Spreadsheet._Function = Object.freeze({
      */
     LCM(x, y) {
         if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        if (!Number.isInteger(x) || !Number.isInteger(y)) throw new Spreadsheet.ArgumentTypeError(this.position);
+        if (typeof x !== "number" || typeof y !== "number" || !Number.isInteger(x) || !Number.isInteger(y)) throw new Spreadsheet.ArgumentTypeError(this.position);
         return x*y/GCD(x, y);
     },
 
@@ -503,12 +508,14 @@ Spreadsheet._Function = Object.freeze({
      * @param {number} x
      * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
      * @throws {Spreadsheet.ArgumentTypeError} x must be of type number
+     * @throws {Spreadsheet.FormulaError} x must be > 0
      * @returns {number}
      * @function
      */
     LN(x) {
         if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof x !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
+        if (x <= 0) throw new Spreadsheet.FormulaError("Incorrect value", this.position);
         return Math.log(x);
     },
 
@@ -517,12 +524,14 @@ Spreadsheet._Function = Object.freeze({
      * @param {number} x
      * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
      * @throws {Spreadsheet.ArgumentTypeError} x must be of type number
+     * @throws {Spreadsheet.FormulaError} x must be > 0
      * @returns {number}
      * @function
      */
     LOG10(x) {
         if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof x !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
+        if (x <= 0) throw new Spreadsheet.FormulaError("Incorrect value", this.position);
         return Math.log10(x);
     },
 
@@ -532,12 +541,15 @@ Spreadsheet._Function = Object.freeze({
      * @param {number} base
      * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 2
      * @throws {Spreadsheet.ArgumentTypeError} x and base must be of type number
+     * @throws {Spreadsheet.FormulaError} x must be > 0, base must be > 0 and !== 1
      * @returns {number}
      * @function
      */
     LOG(x, base) {
         if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof x !== "number" || typeof base !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
+        if (x <= 0) throw new Spreadsheet.FormulaError("Incorrect value", this.position);
+        if (base <= 0 || base === 1) throw new Spreadsheet.FormulaError("Incorrect value", this.position);
         return Math.log(x)/Math.log(base);
     },
 
@@ -571,12 +583,14 @@ Spreadsheet._Function = Object.freeze({
      * @param {number} exponent
      * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 2
      * @throws {Spreadsheet.ArgumentTypeError} base and exponent must be of type number
+     * @throws {Spreadsheet.FormulaError} if base < 0, exponent must be odd
      * @returns {number}
      * @function
      */
     POW(base, exponent) {
         if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        if (typeof base !== "number" || typeof exponent !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
+        if (typeof base !== "number" || typeof exponent !== "number" || !Number.isInteger(exponent)) throw new Spreadsheet.ArgumentTypeError(this.position);
+        if (base < 0 && Number.isInteger(exponent) && exponent%2 === 0) throw new Spreadsheet.FormulaError("Incorrect value", this.position);
         return Math.pow(base, exponent);
     },
 
@@ -683,12 +697,14 @@ Spreadsheet._Function = Object.freeze({
      * @param {number} x
      * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
      * @throws {Spreadsheet.ArgumentTypeError} x must be of type number
+     * @throws {Spreadsheet.FormulaError} x must be >= 0
      * @returns {number}
      * @function
      */
     SQRT(x) {
         if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof x !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
+        if (x < 0) throw new Spreadsheet.FormulaError("Incorrect value", this.position);
         return Math.sqrt(x);
     },
 
@@ -697,12 +713,14 @@ Spreadsheet._Function = Object.freeze({
      * @param {number} x
      * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
      * @throws {Spreadsheet.ArgumentTypeError} x must be of type number
+     * @throws {Spreadsheet.FormulaError} x must not be multiple of PI/2
      * @returns {number}
      * @function
      */
     TAN(x) {
         if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof x !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
+        if (Number.isInteger(x/(PI/2))) throw new Spreadsheet.FormulaError("Incorrect value", this.position);
         return Math.tan(x);
     },
 
@@ -733,9 +751,9 @@ Spreadsheet._Function = Object.freeze({
         if (typeof str !== "string") throw new Spreadsheet.ArgumentTypeError(this.position);
         return str.charCodeAt(0);
     },
-    
+
     /**
-     * Locate one text string within a second text string, and return the number of the starting position of the first text string 
+     * Locate one text string within a second text string, and return the number of the starting position of the first text string
      * from the first character of the second text string. Case-sensitive.
      * @param {string} str
      * @param {string} text
@@ -755,7 +773,7 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     * Rounds a number to the specified number of decimals, formats the number in decimal format using a period and commas, 
+     * Rounds a number to the specified number of decimals, formats the number in decimal format using a period and commas,
      * and returns the result as text
      * @param {number} num
      * @param {int} placesAfterFloatingPoint
@@ -818,7 +836,7 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     * MID returns a specific number of characters from a text string, starting at the position you specify, 
+     * MID returns a specific number of characters from a text string, starting at the position you specify,
      * based on the number of characters you specify
      * @param {string} str
      * @param {int} start
@@ -853,7 +871,7 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     * Locate one text string within a second text string, and return the number of the starting position of the first text string 
+     * Locate one text string within a second text string, and return the number of the starting position of the first text string
      * from the first character of the second text string. Case-insensitive.
      * @param {string} str
      * @param {string} text
@@ -933,7 +951,7 @@ Spreadsheet._Function = Object.freeze({
      * @function
      */
     IF(condition, ifTrue, ifFalse) {
-    	console.log(ifTrue);
+        console.log(ifTrue);
         if (arguments.length !== 3) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof condition !== "boolean") throw new Spreadsheet.ArgumentTypeError(this.position);
         if (condition) return ifTrue;
@@ -1084,24 +1102,24 @@ Spreadsheet._Function = Object.freeze({
      * @function
      */
     MAX(...args) {
-    	let first = args[0] instanceof Spreadsheet.Table ? args[0].table[0][0] : args[0]; 
-		if (typeof first !== "number" && typeof first !== "string" || !args.every(value => { 
-    		if (value instanceof Spreadsheet.Table) { 
-       			let flag = true; 
-        		value.forEachValue(cell => flag = flag && typeof cell === typeof first); 
-        		return flag; 
-    		} 
-    		return typeof value === typeof first; 
-		})) throw new Spreadsheet.ArgumentTypeError(this.position);
-		for (let element of args) {
-			if (element instanceof Spreadsheet.Table) {
+        let first = args[0] instanceof Spreadsheet.Table ? args[0].table[0][0] : args[0];
+        if (typeof first !== "number" && typeof first !== "string" || !args.every(value => {
+                if (value instanceof Spreadsheet.Table) {
+                    let flag = true;
+                    value.forEachValue(cell => flag = flag && typeof cell === typeof first);
+                    return flag;
+                }
+                return typeof value === typeof first;
+            })) throw new Spreadsheet.ArgumentTypeError(this.position);
+        for (let element of args) {
+            if (element instanceof Spreadsheet.Table) {
                 element.forEachValue(cell => {
                     if (cell > first) first = cell
                 });
             } else {
                 if (element > first) first = element
             }
-		}
+        }
         return first;
     },
 
@@ -1114,24 +1132,24 @@ Spreadsheet._Function = Object.freeze({
      * @function
      */
     MIN(...args) {
-    	let first = args[0] instanceof Spreadsheet.Table ? args[0].table[0][0] : args[0]; 
-		if (typeof first !== "number" && typeof first !== "string" || !args.every(value => { 
-    		if (value instanceof Spreadsheet.Table) { 
-       			let flag = true; 
-        		value.forEachValue(cell => flag = flag && typeof cell === typeof first); 
-        		return flag; 
-    		} 
-    		return typeof value === typeof first; 
-		})) throw new Spreadsheet.ArgumentTypeError(this.position);
-		for (let element of args) {
-			if (element instanceof Spreadsheet.Table) {
+        let first = args[0] instanceof Spreadsheet.Table ? args[0].table[0][0] : args[0];
+        if (typeof first !== "number" && typeof first !== "string" || !args.every(value => {
+                if (value instanceof Spreadsheet.Table) {
+                    let flag = true;
+                    value.forEachValue(cell => flag = flag && typeof cell === typeof first);
+                    return flag;
+                }
+                return typeof value === typeof first;
+            })) throw new Spreadsheet.ArgumentTypeError(this.position);
+        for (let element of args) {
+            if (element instanceof Spreadsheet.Table) {
                 element.forEachValue(cell => {
                     if (cell < first) first = cell
                 });
             } else {
                 if (element < first) first = element
             }
-		}
+        }
         return first;
     },
 
@@ -1204,9 +1222,9 @@ Spreadsheet._Function = Object.freeze({
     /**
      * Returns the value of an element in a table, selected by the row and column integer indexes
      * @param {Spreadsheet.Table} range
-     * @param {int} row 
+     * @param {int} row
      * @param {int} column
-     * @throws {Spreadsheet.FormulaError} Column and Row must be smaller than range.table size 
+     * @throws {Spreadsheet.FormulaError} Column and Row must be smaller than range.table size
      * @throws {Spreadsheet.ArgumentTypeError} Range must be of type Spreadsheet.Table, row and column must be of type int
      * @returns {int|string|boolean}
      * @function
