@@ -411,12 +411,14 @@ Spreadsheet._Function = Object.freeze({
      * @param {number} y
      * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
      * @throws {Spreadsheet.ArgumentTypeError} y must be of type number
+     * @throws {Spreadsheet.FormulaError} x must be >= 0
      * @returns {int}
      * @function
      */
     FACT(x) {
         if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof x !== "number" || !Number.isInteger(x)) throw new Spreadsheet.ArgumentTypeError(this.position);
+        if (x < 0) throw new Spreadsheet.FormulaError("Incorrect value", this.position);
         if (x === 0 || x === 1) return 1;
         let factorial = 1;
         while (x > 1) {
