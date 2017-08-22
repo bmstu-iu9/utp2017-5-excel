@@ -8,6 +8,8 @@ Spreadsheet._Function = Object.freeze({
     /**
      * Logical NOT
      * @param {boolean} value
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
+     * @throws {Spreadsheet.ArgumentTypeError} arguments must be of type boolean
      * @returns {boolean}
      * @function
      */
@@ -20,6 +22,8 @@ Spreadsheet._Function = Object.freeze({
     /**
      * Logical AND
      * @param {...boolean} values
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be at least 2
+     * @throws {Spreadsheet.ArgumentTypeError} arguments must be of type boolean
      * @returns {boolean}
      * @function
      */
@@ -32,6 +36,8 @@ Spreadsheet._Function = Object.freeze({
     /**
      * Logical OR
      * @param {...boolean} values
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be at least 2
+     * @throws {Spreadsheet.ArgumentTypeError} arguments must be of type boolean
      * @returns {boolean}
      * @function
      */
@@ -44,11 +50,13 @@ Spreadsheet._Function = Object.freeze({
     /**
      * Concatenates strings
      * @param {...string} args
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be at least 1
+     * @throws {Spreadsheet.ArgumentTypeError} arguments must be of type string
      * @returns {string}
      * @function
      */
     CONCATENATE(...args) {
-        if (args.length === 0) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        if (args.length < 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (args.some(e => typeof e !== "string")) throw new Spreadsheet.ArgumentTypeError(this.position);
         return args.join("");
     },
@@ -56,6 +64,8 @@ Spreadsheet._Function = Object.freeze({
     /**
      * Casts value to number
      * @param {number|string|boolean} value
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
+     * @throws {Spreadsheet.ArgumentTypeError} value must be of type number, string or boolean
      * @returns {number}
      * @function
      */
@@ -68,6 +78,7 @@ Spreadsheet._Function = Object.freeze({
     /**
      * Casts value to boolean
      * @param {number|string|boolean} value
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
      * @returns {boolean}
      * @function
      */
@@ -79,6 +90,8 @@ Spreadsheet._Function = Object.freeze({
     /**
      * Casts value to string
      * @param {number|string|boolean} value
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
+     * @throws {Spreadsheet.ArgumentTypeError} value must be of type number, string or boolean
      * @returns {string}
      * @function
      */
@@ -88,9 +101,11 @@ Spreadsheet._Function = Object.freeze({
             case "boolean":
                 return value ? "TRUE" : "FALSE";
             case "number":
-                return "" + value;
+                return value.toString();
             case "string":
                 return value;
+            default:
+            	throw new Spreadsheet.ArgumentTypeError(this.position);
         }
     },
 
@@ -98,6 +113,8 @@ Spreadsheet._Function = Object.freeze({
      * Add up to numbers; also a `+` operator
      * @param {number} a
      * @param {number} b
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 2
+     * @throws {Spreadsheet.ArgumentTypeError} a and b must be numbers
      * @returns {number}
      * @function
      */
@@ -112,6 +129,8 @@ Spreadsheet._Function = Object.freeze({
      * Subtracts second number from first; also a `-` operator
      * @param {number} a
      * @param {number} b
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 2
+     * @throws {Spreadsheet.ArgumentTypeError} a and b must be numbers
      * @returns {number}
      * @function
      */
@@ -124,6 +143,8 @@ Spreadsheet._Function = Object.freeze({
     /**
      * Negates a number; also a unary `-` operator
      * @param {number} a
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
+     * @throws {Spreadsheet.ArgumentTypeError} a must be number
      * @returns {number}
      * @function
      */
@@ -137,6 +158,8 @@ Spreadsheet._Function = Object.freeze({
      * Multiplies two numbers; also a `*` operator
      * @param {number} a
      * @param {number} b
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 2
+     * @throws {Spreadsheet.ArgumentTypeError} a and b must be numbers
      * @returns {number}
      * @function
      */
@@ -151,12 +174,14 @@ Spreadsheet._Function = Object.freeze({
      * Divides first number by second; also a `/` operator
      * @param {number} a
      * @param {number} b
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 2
+     * @throws {Spreadsheet.ArgumentTypeError} a and b must be non zero numbers
      * @returns {number}
      * @function
      */
     DIVIDE(a, b) {
         if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        if (typeof a !== "number" || typeof b !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
+        if (typeof a !== "number" || typeof b !== "number" || a === 0 || b === 0) throw new Spreadsheet.ArgumentTypeError(this.position);
         return a / b;
     },
 
@@ -164,6 +189,8 @@ Spreadsheet._Function = Object.freeze({
      * Checks if two values are equal; also an `=` operator
      * @param {number|string|boolean} a
      * @param {number|string|boolean} b
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 2
+     * @throws {Spreadsheet.ArgumentTypeError} a and b have different types
      * @returns {boolean}
      * @function
      */
@@ -177,12 +204,14 @@ Spreadsheet._Function = Object.freeze({
      * Checks if a is greater than b; also a `>` operator
      * @param {number} a
      * @param {number} b
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 2
+     * @throws {Spreadsheet.ArgumentTypeError} a and b must be of type number or string
      * @returns {boolean}
      * @function
      */
     GT(a, b) {
         if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        if (typeof a !== typeof b || typeof a === "boolean") throw new Spreadsheet.ArgumentTypeError(this.position);
+        if (typeof a !== typeof b || (typeof a !== "number" && typeof a !== "string")) throw new Spreadsheet.ArgumentTypeError(this.position);
         return a > b;
     },
 
@@ -190,12 +219,14 @@ Spreadsheet._Function = Object.freeze({
      * Checks if a is less or equal than b; also a `<=` operator
      * @param {number} a
      * @param {number} b
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 2
+     * @throws {Spreadsheet.ArgumentTypeError} a and b must be of type number or string
      * @returns {boolean}
      * @function
      */
     LTE(a, b) {
         if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        if (typeof a !== typeof b || typeof a === "boolean") throw new Spreadsheet.ArgumentTypeError(this.position);
+        if (typeof a !== typeof b || (typeof a !== "number" && typeof a !== "string")) throw new Spreadsheet.ArgumentTypeError(this.position);
         return a <= b;
     },
 
@@ -203,12 +234,14 @@ Spreadsheet._Function = Object.freeze({
      * Checks if a is less than b; also a `<` operator
      * @param {number} a
      * @param {number} b
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 2
+     * @throws {Spreadsheet.ArgumentTypeError} a and b must be of type number or string
      * @returns {boolean}
      * @function
      */
     LT(a, b) {
         if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        if (typeof a !== typeof b || typeof a === "boolean") throw new Spreadsheet.ArgumentTypeError(this.position);
+        if (typeof a !== typeof b || (typeof a !== "number" && typeof a !== "string")) throw new Spreadsheet.ArgumentTypeError(this.position);
         return a < b;
     },
 
@@ -216,18 +249,22 @@ Spreadsheet._Function = Object.freeze({
      * Checks if a is greater or equal than b; also a `>=` operator
      * @param {number} a
      * @param {number} b
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 2
+     * @throws {Spreadsheet.ArgumentTypeError} a and b must be of type number or string
      * @returns {boolean}
      * @function
      */
     GTE(a, b) {
         if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        if (typeof a !== typeof b || typeof a === "boolean") throw new Spreadsheet.ArgumentTypeError(this.position);
+        if (typeof a !== typeof b || (typeof a !== "number" && typeof a !== "string")) throw new Spreadsheet.ArgumentTypeError(this.position);
         return a >= b;
     },
 
     /**
-     * Abs
-     * @param x
+     * Returns the absolute value of a number
+     * @param {number} x
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
+     * @throws {Spreadsheet.ArgumentTypeError} x must be of type number
      * @returns {number}
      * @function
      */
@@ -238,8 +275,10 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     * Arccosine
-     * @param x
+     * Returns the arccosine of a number
+     * @param {number} x
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
+     * @throws {Spreadsheet.ArgumentTypeError} x must be of type number
      * @returns {number}
      * @function
      */
@@ -250,8 +289,10 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     * Arcsine
-     * @param x
+     * Returns the arcsine of a number
+     * @param {number} x
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
+     * @throws {Spreadsheet.ArgumentTypeError} x must be of type number
      * @returns {number}
      * @function
      */
@@ -262,8 +303,10 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     * Arctangent
-     * @param x
+     * Returns the arctangent of a number
+     * @param {number} x
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
+     * @throws {Spreadsheet.ArgumentTypeError} x must be of type number
      * @returns {number}
      * @function
      */
@@ -274,8 +317,10 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     * Arccotangent
-     * @param x
+     * Returns the principal value of the arccotangent of a number
+     * @param {number} x
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
+     * @throws {Spreadsheet.ArgumentTypeError} x must be of type number
      * @returns {number}
      * @function
      */
@@ -286,8 +331,10 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     *
-     * @param x
+     * Returns the cosine of the given angle.
+     * @param {number} x
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
+     * @throws {Spreadsheet.ArgumentTypeError} x must be of type number
      * @returns {number}
      * @function
      */
@@ -298,8 +345,10 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     * Cotangent
-     * @param x
+     * Return the cotangent of an angle specified in radians
+     * @param {number} x
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
+     * @throws {Spreadsheet.ArgumentTypeError} x must be of type number
      * @returns {number}
      * @function
      */
@@ -310,9 +359,11 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     *
-     * @param x
-     * @returns {number}
+     * Returns number rounded up, away from zero, to the nearest multiple of significance
+     * @param {number} x
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
+     * @throws {Spreadsheet.ArgumentTypeError} x must be of type number
+     * @returns {int}
      * @function
      */
     CEILING(x) {
@@ -322,8 +373,10 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     * Radians to degrees
-     * @param x
+     * Converts radians into degrees
+     * @param {number} x
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
+     * @throws {Spreadsheet.ArgumentTypeError} x must be of type number
      * @returns {number}
      * @function
      */
@@ -334,26 +387,31 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     * Exponent of x
-     * @param x
+     * Returns e raised to the power of number
+     * @param {number} x
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1 or 0
+     * @throws {Spreadsheet.ArgumentTypeError} x must be of type number
      * @returns {number}
      * @function
      */
     EXP(x = 1) {
-        if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        if (arguments.length !== 1 && arguments.length !== 0) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof x !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
         return Math.exp(x);
     },
 
     /**
-     * Factorial of x
-     * @param x
-     * @returns {number}
+     * Returns the factorial of a number
+     * @param {number} y
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
+     * @throws {Spreadsheet.ArgumentTypeError} y must be of type number
+     * @returns {int}
      * @function
      */
-    FACT(x) {
+    FACT(y) {
         if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof x !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
+        const x = Math.floor(y); 
         if (x === 0 || x === 1) return 1;
         let factorial = 1;
         while (x > 1) {
@@ -364,9 +422,11 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     *
-     * @param x
-     * @returns {number}
+     * Rounds number down, toward zero, to the nearest multiple of significance
+     * @param {number} x
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
+     * @throws {Spreadsheet.ArgumentTypeError} x must be of type number
+     * @returns {int}
      * @function
      */
     FLOOR(x) {
@@ -376,15 +436,17 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     *
-     * @param x
-     * @param y
-     * @returns {number}
+     * Returns the greatest common divisor of two or more integers
+     * @param {int} x
+     * @param {int} y
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 2
+     * @throws {Spreadsheet.ArgumentTypeError} x and y must be of type int
+     * @returns {int}
      * @function
      */
     GCD(x, y) {
         if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        if (typeof x !== "number" || typeof y !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
+        if (!Number.isInteger(x) || !Number.isInteger(y)) throw new Spreadsheet.ArgumentTypeError(this.position);
         while (y) {
             let z = x%y;
             x = y;
@@ -394,8 +456,10 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     * Checks if x is even
-     * @param x
+     * Returns FALSE if number is odd, or TRUE if number is even
+     * @param {number} x
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
+     * @throws {Spreadsheet.ArgumentTypeError} x must be of type number
      * @returns {boolean}
      * @function
      */
@@ -406,8 +470,10 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     * Checks if x is odd
-     * @param x
+     * Returns TRUE if number is odd, or FALSE if number is even
+     * @param {number} x
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
+     * @throws {Spreadsheet.ArgumentTypeError} x must be of type number
      * @returns {boolean}
      * @function
      */
@@ -418,21 +484,25 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     *
-     * @param x
-     * @param y
-     * @returns {number}
+     * Returns the least common multiple of integers
+     * @param {int} x
+     * @param {int} y
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 2
+     * @throws {Spreadsheet.ArgumentTypeError} x and y must be of type int
+     * @returns {int}
      * @function
      */
     LCM(x, y) {
         if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        if (typeof x !== "number" || typeof y !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
+        if (!Number.isInteger(x) || !Number.isInteger(y)) throw new Spreadsheet.ArgumentTypeError(this.position);
         return x*y/GCD(x, y);
     },
 
     /**
-     * Natural logarithm of x
-     * @param x
+     * Returns the natural logarithm of a number
+     * @param {number} x
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
+     * @throws {Spreadsheet.ArgumentTypeError} x must be of type number
      * @returns {number}
      * @function
      */
@@ -443,8 +513,10 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     * A logarithm of x to the base 10
-     * @param x
+     * Returns the base-10 logarithm of a number
+     * @param {number} x
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
+     * @throws {Spreadsheet.ArgumentTypeError} x must be of type number
      * @returns {number}
      * @function
      */
@@ -455,9 +527,11 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     * A logarithm of x to the base "base"
-     * @param x
-     * @param base
+     * Returns the logarithm of a number to the base you specify
+     * @param {number} x
+     * @param {number} base
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 2
+     * @throws {Spreadsheet.ArgumentTypeError} x and base must be of type number
      * @returns {number}
      * @function
      */
@@ -468,20 +542,22 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     *
-     * @param dividend
-     * @param divisor
+     * Returns the remainder after number is divided by divisor
+     * @param {number} dividend
+     * @param {number} divisor
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 2
+     * @throws {Spreadsheet.ArgumentTypeError} dividend and divisor must be of type number
      * @returns {number}
      * @function
      */
     MOD(dividend, divisor) {
         if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof dividend !== "number" || typeof divisor !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
-        return dividend%divisor;
+        return dividend % divisor;
     },
 
     /**
-     *
+     * Returns the mathematical constant pi
      * @returns {number}
      * @function
      */
@@ -490,9 +566,11 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     *
-     * @param base
-     * @param exponent
+     * Returns the result of a number raised to a power
+     * @param {number} base
+     * @param {number} exponent
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 2
+     * @throws {Spreadsheet.ArgumentTypeError} base and exponent must be of type number
      * @returns {number}
      * @function
      */
@@ -503,21 +581,25 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     * целочисленное деление
-     * @param dividend
-     * @param divisor
-     * @returns {number}
+     * Returns the integer portion of a division
+     * @param {number} dividend
+     * @param {number} divisor
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 2
+     * @throws {Spreadsheet.ArgumentTypeError} dividend and divisor must be of type number
+     * @returns {int}
      * @function
      */
     QUOTIENT(dividend, divisor) {
         if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof dividend !== "number" || typeof divisor !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
-        return divident/divisor;
+        return Math.floor(dividend/divisor);
     },
 
     /**
-     * Degrees to radians
-     * @param x
+     * Converts degrees to radians
+     * @param {number} x
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
+     * @throws {Spreadsheet.ArgumentTypeError} x must be of type number
      * @returns {number}
      * @function
      */
@@ -528,7 +610,7 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     *
+     * Returns an evenly distributed random real number greater than or equal to 0 and less than 1
      * @returns {number}
      * @function
      */
@@ -537,34 +619,40 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     *
-     * @param low
-     * @param high
-     * @returns {number}
+     * Returns a random integer number between the numbers you specify
+     * @param {number} low
+     * @param {number} high
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 2
+     * @throws {Spreadsheet.ArgumentTypeError} low and high must be of type number
+     * @returns {int}
      * @function
      */
     RANDBETWEEN(low, high) {
         if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof low !== "number" || typeof high !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
-        return Math.random()*(high - low) + low;
+        return Spreadsheet._Function.ROUND(Math.random()*(high - low) + low);
     },
 
     /**
-     *
-     * @param x
-     * @param places
+     * Rounds a number to a specified number of digits
+     * @param {number} x
+     * @param {int} places
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1 or 2
+     * @throws {Spreadsheet.ArgumentTypeError} x must be of type number, places must be of type int
      * @returns {number}
      * @function
      */
     ROUND(x, places = 0) {
-        if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        if (typeof x !== "number" || typeof places !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
+        if (arguments.length !== 2 && arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        if (typeof x !== "number" || !Number.isInteger(places)) throw new Spreadsheet.ArgumentTypeError(this.position);
         return Math.round(x*Math.pow(10, places))/Math.pow(10, places);
     },
 
     /**
-     *
-     * @param x
+     * Determines the sign of a number. Returns 1 if the number is positive, zero (0) if the number is 0, and -1 if the number is negative.
+     * @param {number} x
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
+     * @throws {Spreadsheet.ArgumentTypeError} x must be of type number
      * @returns {number}
      * @function
      */
@@ -577,8 +665,10 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     * Sine
-     * @param x
+     * Returns the sine of the given angle
+     * @param {number} x
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
+     * @throws {Spreadsheet.ArgumentTypeError} x must be of type number
      * @returns {number}
      * @function
      */
@@ -589,8 +679,10 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     * Square root
-     * @param x
+     * Returns a positive square root
+     * @param {number} x
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
+     * @throws {Spreadsheet.ArgumentTypeError} x must be of type number
      * @returns {number}
      * @function
      */
@@ -601,8 +693,10 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     * Tangent
-     * @param x
+     * Returns the tangent of the given angle
+     * @param {number} x
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
+     * @throws {Spreadsheet.ArgumentTypeError} x must be of type number
      * @returns {number}
      * @function
      */
@@ -613,77 +707,94 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     * Returns a symbol, which Unicode index is "index"
-     * @param index
+     * Returns the character specified by a number
+     * @param {number} index
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
+     * @throws {Spreadsheet.ArgumentTypeError} index must be of type number
      * @returns {string}
      * @function
      */
     CHAR(index) {
-        if (args.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof index !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
-        return String.fromCharCode(index);
+        return String.fromCharCode(index)
     },
 
     /**
-     * Returns Unicode index of the first str symbol
-     * @param str
-     * @returns {Number}
+     * Returns a numeric code for the first character in a text string
+     * @param {string} str
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
+     * @throws {Spreadsheet.ArgumentTypeError} str must be of type string
+     * @returns {int}
      * @function
      */
     CODE(str) {
-        if (args.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof str !== "string") throw new Spreadsheet.ArgumentTypeError(this.position);
         return str.charCodeAt(0);
     },
-
+    
     /**
-     *
-     * @param str
-     * @param text
-     * @param start
-     * @returns {Number|number}
+     * Locate one text string within a second text string, and return the number of the starting position of the first text string 
+     * from the first character of the second text string. Case-sensitive.
+     * @param {string} str
+     * @param {string} text
+     * @param {int} start
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 3
+     * @throws {Spreadsheet.ArgumentTypeError} str and text must be of type string, start must be of type number
+     * @returns {int|string}
      * @function
      */
-    FIND(str, text, start = 0) {
-        if (arguments.length !== 3) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        if (typeof str !== "string" || typeof text !== "string" || typeof start !== "number")
+    FIND(str, text, start = 1) {
+        if (arguments.length !== 3 && arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        start = start - 1;
+        if (typeof str !== "string" || typeof text !== "string" || !Number.isInteger(start) || start < 0)
             throw new Spreadsheet.ArgumentTypeError(this.position);
-        return text.indexOf(str, start);
+        const index = text.indexOf(str, start)
+        return index === -1 ? -1 : index + 1;
     },
 
     /**
-     *
-     * @param num
-     * @param placesAfterFloatingPoint
-     * @returns {string}
+     * Rounds a number to the specified number of decimals, formats the number in decimal format using a period and commas, 
+     * and returns the result as text
+     * @param {number} num
+     * @param {int} placesAfterFloatingPoint
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 2
+     * @throws {Spreadsheet.ArgumentTypeError} num must be of type number, placesAfterFloatingPoint must be of type int
+     * @returns {number}
      * @function
      */
     FIXED(num, placesAfterFloatingPoint) {
         if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        if (typeof num !== "number" || typeof placesAfterFloatingPoint !== "number") {
+        if (typeof num !== "number" || !Number.isInteger(placesAfterFloatingPoint)) {
             throw new Spreadsheet.ArgumentTypeError(this.position);
         }
         return num.toFixed(placesAfterFloatingPoint);
     },
 
     /**
-     *
-     * @param str
-     * @param len
+     * Returns the first character or characters in a text string, based on the number of characters you specify
+     * @param {string} str
+     * @param {int} len
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 2
+     * @throws {Spreadsheet.ArgumentTypeError} str must be of type string, len must be of type int
      * @returns {string}
      * @function
      */
     LEFT(str, len) {
         if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        if (typeof str !== "string" || typeof len !== "number") {
+        if (typeof str !== "string" || !Number.isInteger(len) || len < 0) {
             throw new Spreadsheet.ArgumentTypeError(this.position);
         }
         return str.substr(0, len);
     },
 
     /**
-     *
-     * @param str
+     * Returns the number of characters in a text string
+     * @param {string} str
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
+     * @throws {Spreadsheet.ArgumentTypeError} str must be of type string
+     * @returns {int}
      * @function
      */
     LEN(str) {
@@ -693,8 +804,10 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     *
-     * @param str
+     * Converts all uppercase letters in a text string to lowercase
+     * @param {string} str
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
+     * @throws {Spreadsheet.ArgumentTypeError} str must be of type string
      * @returns {string}
      * @function
      */
@@ -705,52 +818,65 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     * Substring
-     * @param str
-     * @param start
-     * @param len
+     * MID returns a specific number of characters from a text string, starting at the position you specify, 
+     * based on the number of characters you specify
+     * @param {string} str
+     * @param {int} start
+     * @param {int} len
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 3
+     * @throws {Spreadsheet.ArgumentTypeError} str must be of type string, start and len must be of type int
      * @returns {string}
      * @function
      */
     MID(str, start, len) {
         if (arguments.length !== 3) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        if (typeof str !== "string" || typeof start !== "number" || typeof len !== "number")
+        start = start - 1
+        if (typeof str !== "string" || !Number.isInteger(start) || start < 0 || !Number.isInteger(len) || len < 0)
             throw new Spreadsheet.ArgumentTypeError(this.position);
         return str.substr(start, len);
     },
 
     /**
-     *
-     * @param str
-     * @param len
+     * Returns the last character or characters in a text string, based on the number of characters you specify
+     * @param {string} str
+     * @param {int} len
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 2
+     * @throws {Spreadsheet.ArgumentTypeError} str must be of type string, len must be of type int
      * @returns {string}
-     * @constructor
+     * @function
      */
     RIGHT(str, len) {
         if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        if (typeof str !== "string" || typeof len !== "number")
+        if (typeof str !== "string" || !Number.isInteger(len) || len < 0)
             throw new Spreadsheet.ArgumentTypeError(this.position);
-        return str.substr(str.length - len, len);
+        return len < str.length ? str.substr(str.length - len, len) : str;
     },
 
     /**
-     *
-     * @param str
-     * @param text
-     * @param start
-     * @returns {Number}
+     * Locate one text string within a second text string, and return the number of the starting position of the first text string 
+     * from the first character of the second text string. Case-insensitive.
+     * @param {string} str
+     * @param {string} text
+     * @param {int} start
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 3
+     * @throws {Spreadsheet.ArgumentTypeError} str and text must be of type string, start must be of type number
+     * @returns {int|string}
      * @function
      */
-    SEARCH(str, text, start = 0) {
-        if (arguments.length !== 3) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        if (typeof str !== "string" || typeof text !== "string" || typeof start !== "number")
+    SEARCH(str, text, start = 1) {
+        if (arguments.length !== 3 && arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
+        start = start - 1;
+        if (typeof str !== "string" || typeof text !== "string" || !Number.isInteger(start) || start < 0)
             throw new Spreadsheet.ArgumentTypeError(this.position);
-        return text.toLowerCase().indexOf(str.toLowerCase(), start);
+        const index = text.toLowerCase().indexOf(str.toLowerCase(), start)
+        return index === -1 ? -1 : index + 1;
     },
 
     /**
-     *
-     * @param str
+     * Converts text to uppercase
+     * @param {string|number|boolean} str
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Value must be not empty
+     * @throws {Spreadsheet.ArgumentTypeError} str must be of type string
      * @returns {string}
      * @function
      */
@@ -761,8 +887,9 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     *
-     * @param value
+     * Return TRUE if value is number
+     * @param {string|number|boolean} value
+     * @throws {Spreadsheet.ArgumentTypeError} Value must be not empty
      * @returns {boolean}
      * @function
      */
@@ -772,8 +899,9 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     *
-     * @param value
+     * Return TRUE if value is boolean
+     * @param {string|number|boolean} value
+     * @throws {Spreadsheet.ArgumentTypeError} Value must be not empty
      * @returns {boolean}
      * @function
      */
@@ -783,8 +911,9 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     *
-     * @param value
+     * Return TRUE if value is string
+     * @param {string|number|boolean} value
+     * @throws {Spreadsheet.ArgumentTypeError} Value must be not empty
      * @returns {boolean}
      * @function
      */
@@ -794,14 +923,17 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     * Returns one value if a logical expression is `true` and another if it is `false`.
-     * @param condition
-     * @param ifTrue
-     * @param ifFalse
-     * @returns {*}
+     * Returns one value if a logical expression is `true` and another if it is `false`
+     * @param {boolean} condition
+     * @param {number|string|boolean} ifTrue
+     * @param {number|string|boolean} ifFalse
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 3
+     * @throws {Spreadsheet.ArgumentTypeError} condition must be of type boolean
+     * @returns {number|string|boolean}
      * @function
      */
     IF(condition, ifTrue, ifFalse) {
+    	console.log(ifTrue);
         if (arguments.length !== 3) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof condition !== "boolean") throw new Spreadsheet.ArgumentTypeError(this.position);
         if (condition) return ifTrue;
@@ -810,8 +942,10 @@ Spreadsheet._Function = Object.freeze({
 
     /**
      * Returns sum of given arguments
-     * @param args
-     * @returns int
+     * @param {number|Spreadsheet.Table} args
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be at least one
+     * @throws {Spreadsheet.ArgumentTypeError} Values must be of type number
+     * @returns {number}
      * @function
      */
     SUM(...args) {
@@ -833,23 +967,25 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     * Returns multiplication of given arguments
-     * @param args
-     * @returns int
+     * PRODUCT function multiplies all the numbers given as arguments and returns the product
+     * @param {number|Spreadsheet.Table} args
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be at least one
+     * @throws {Spreadsheet.ArgumentTypeError} Values must be of type number
+     * @returns {number}
      * @function
      */
     PRODUCT(...args) {
         if (args.length < 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        return args.reduce((sum, element) => {
+        return args.reduce((product, element) => {
             if (element instanceof Spreadsheet.Table) {
                 let rangeSum = 1;
                 element.forEachValue(cell => {
                     if (typeof cell !== 'number') throw new Spreadsheet.ArgumentTypeError(this.position);
                     rangeSum *= cell;
                 });
-                return sum * rangeSum;
+                return product * rangeSum;
             } else if (typeof element === "number") {
-                return sum * element;
+                return product * element;
             } else {
                 throw new Spreadsheet.ArgumentTypeError(this.position);
             }
@@ -858,30 +994,34 @@ Spreadsheet._Function = Object.freeze({
 
     /**
      * Returns number of columns in range
-     * @param range
-     * @returns int
+     * @param {Spreadsheet.Table} range
+     * @throws {Spreadsheet.ArgumentTypeError} Range must be of type Spreadsheet.Table
+     * @returns {int}
      * @function
      */
     COLUMNS(range) {
-        if (!range instanceof Spreadsheet.Table) throw new Spreadsheet.ArgumentTypeError(this.position);
+        if (!(range instanceof Spreadsheet.Table)) throw new Spreadsheet.ArgumentTypeError(this.position);
         return range.table.length
     },
 
     /**
      * Returns number of rows in range
-     * @param range
-     * @returns int
+     * @param {Spreadsheet.Table} range
+     * @throws {Spreadsheet.ArgumentTypeError} Range must be of type Spreadsheet.Table
+     * @returns {int}
      * @function
      */
     ROWS(range) {
-        if (!range instanceof Spreadsheet.Table) throw new Spreadsheet.ArgumentTypeError(this.position);
-        return range.table.length > 0 ? range.table[0].length : 0
+        if (!(range instanceof Spreadsheet.Table)) throw new Spreadsheet.ArgumentTypeError(this.position);
+        return range.table.length && range.table[0].length;
     },
 
     /**
-     * Returns average of given arguments
-     * @param args
-     * @returns int
+     * Returns the average (arithmetic mean) of the arguments
+     * @param {number|Spreadsheet.Table} args
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be at least one
+     * @throws {Spreadsheet.ArgumentTypeError} Values must be of type number
+     * @returns {number}
      * @function
      */
     AVERAGE(...args) {
@@ -890,24 +1030,21 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     * Returns number of given arguments of type number
-     * @param args
-     * @returns int
+     * Counts the number of cells that contain numbers
+     * @param {number|boolean|string|Spreadsheet.Table} args
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be at least one
+     * @returns {int}
      * @function
      */
     COUNT(...args) {
-        console.log("COUNT");
-        console.log(args);
         if (args.length < 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         return args.reduce((sum, element) => {
             if (element instanceof Spreadsheet.Table) {
                 let rangeSum = 0;
                 element.forEachValue(cell => {
-                    if (typeof cell === 'number') {
-                        rangeSum += cell;
-                    }
+                    if (typeof cell === 'number') rangeSum += 1;
                 });
-                return rangeSum;
+                return sum + rangeSum;
             } else if (typeof element === "number") {
                 return sum + 1;
             } else {
@@ -917,14 +1054,15 @@ Spreadsheet._Function = Object.freeze({
     },
 
     /**
-     * Returns number of different values
-     * @param args
-     * @returns int
+     * Count unique values among duplicates
+     * @param {number|boolean|string|Spreadsheet.Table} args
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be at least one
+     * @returns {int}
      * @function
      */
     COUNTUNIQUE(...args) {
         if (args.length < 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        let set = new Set();
+        const set = new Set();
         args.forEach(function (element) {
             if (element instanceof Spreadsheet.Table) {
                 element.forEachValue(cell => {
@@ -939,70 +1077,70 @@ Spreadsheet._Function = Object.freeze({
 
     /**
      * Returns maximum number or string
-     * @param args
-     * @returns int | string
+     * @param {Spreadsheet.Table|number|string} args
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be at least one
+     * @throws {Spreadsheet.ArgumentTypeError} All values must be of type number or string
+     * @returns {int|string}
      * @function
      */
     MAX(...args) {
-        if (args.length < 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        let set = new Set();
-        args.forEach(function (element) {
-            if (element instanceof Spreadsheet.Table) {
+    	let first = args[0] instanceof Spreadsheet.Table ? args[0].table[0][0] : args[0]; 
+		if (typeof first !== "number" && typeof first !== "string" || !args.every(value => { 
+    		if (value instanceof Spreadsheet.Table) { 
+       			let flag = true; 
+        		value.forEachValue(cell => flag = flag && typeof cell === typeof first); 
+        		return flag; 
+    		} 
+    		return typeof value === typeof first; 
+		})) throw new Spreadsheet.ArgumentTypeError(this.position);
+		for (let element of args) {
+			if (element instanceof Spreadsheet.Table) {
                 element.forEachValue(cell => {
-                    set.add(cell);
+                    if (cell > first) first = cell
                 });
             } else {
-                set.add(element);
+                if (element > first) first = element
             }
-        });
-        if (set.length < 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        let max =  Array.from(set.values())[0];
-        if (typeof max !== 'number' && typeof max !== 'string') throw new Spreadsheet.ArgumentTypeError(this.position);
-        set.forEach(function (element) {
-            if (typeof element === typeof max) {
-                if (element > max) max = element;
-            } else {
-                throw new Spreadsheet.ArgumentTypeError(this.position);
-            }
-        });
-        return max;
+		}
+        return first;
     },
 
     /**
      * Returns minimum number or string
-     * @param args
-     * @returns int | string
+     * @param {Spreadsheet.Table|number|string} args
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be at least one
+     * @throws {Spreadsheet.ArgumentTypeError} All values must be of type number or string
+     * @returns {int|string}
      * @function
      */
     MIN(...args) {
-        if (args.length < 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        let set = new Set();
-        args.forEach(function (element) {
-            if (element instanceof Spreadsheet.Table) {
+    	let first = args[0] instanceof Spreadsheet.Table ? args[0].table[0][0] : args[0]; 
+		if (typeof first !== "number" && typeof first !== "string" || !args.every(value => { 
+    		if (value instanceof Spreadsheet.Table) { 
+       			let flag = true; 
+        		value.forEachValue(cell => flag = flag && typeof cell === typeof first); 
+        		return flag; 
+    		} 
+    		return typeof value === typeof first; 
+		})) throw new Spreadsheet.ArgumentTypeError(this.position);
+		for (let element of args) {
+			if (element instanceof Spreadsheet.Table) {
                 element.forEachValue(cell => {
-                    set.add(cell);
+                    if (cell < first) first = cell
                 });
             } else {
-                set.add(element);
+                if (element < first) first = element
             }
-        });
-        if (set.length < 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        let min = Array.from(set.values())[0];
-        if (typeof min !== 'number' && typeof min !== 'string') throw new Spreadsheet.ArgumentTypeError(this.position);
-        set.forEach(function (element) {
-            if (typeof element === typeof min) {
-                if (element < min) min = element;
-            } else {
-                throw new Spreadsheet.ArgumentTypeError(this.position);
-            }
-        });
-        return min;
+		}
+        return first;
     },
 
     /**
-     * Returns median of given arguments
-     * @param args
-     * @returns int | string
+     * Returns the median of the given numbers. The median is the number in the middle of a set of numbers.
+     * @param {Spreadsheet.Table|number} args
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be at least one
+     * @throws {Spreadsheet.ArgumentTypeError} Values must be of type number
+     * @returns {int|string}
      * @function
      */
     MEDIAN(...args) {
@@ -1020,63 +1158,59 @@ Spreadsheet._Function = Object.freeze({
             }
         });
         values.sort();
-        if (values.length % 2 === 1) {
+        if (values.length & 1) {
             return values[parseInt(values.length / 2)];
         }
         return (values[values.length / 2] + values[values.length / 2 - 1])/2;
     },
 
     /**
-     * Returns mode of given arguments
-     * @param args
-     * @returns int | string
+     * Returns the most frequently occurring, or repetitive, value
+     * @param {Spreadsheet.Table|number} args
+     * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be at least one
+     * @throws {Spreadsheet.ArgumentTypeError} Values must be of type number
+     * @returns {int}
      * @function
      */
     MODE(...args) {
         if (args.length < 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        let map = new Map();
+        const map = new Map();
+        const updateValue = value => map.set(value, (map.get(value) ||0 ) + 1);
         args.forEach(function (element) {
             if (element instanceof Spreadsheet.Table) {
                 element.forEachValue(cell => {
                     if (typeof cell === "number") {
-                        if (map.get(cell)) {
-                            map.set(cell, map.get(cell)+1);
-                        } else {
-                            map.set(cell, 1);
-                        }
+                        updateValue(cell);
                     } else {
                         throw new Spreadsheet.ArgumentTypeError(this.position);
                     }
                 });
             } else if (typeof element === "number") {
-                console.log(map.get(element));
-                if (map.get(element)) {
-                    map.set(element, map.get(element)+1);
-                } else {
-                    map.set(element, 1);
-                }
+                updateValue(element);
             } else {
                 throw new Spreadsheet.ArgumentTypeError(this.position);
             }
         });
         const keys = Array.from(map.keys());
         let key = keys[0];
-        keys.forEach((a) => {
-            if (map.get(a) > map.get(key)) key = a;
-        });
+        for (k of keys) {
+        	if (map.get(k) > map.get(key)) key = k;
+        }
         return key;
     },
 
     /**
-     * Returns value of table at given coordinates
-     * @param range
-     * @param row
-     * @param column
-     * @returns int | string | boolean
+     * Returns the value of an element in a table, selected by the row and column integer indexes
+     * @param {Spreadsheet.Table} range
+     * @param {int} row 
+     * @param {int} column
+     * @throws {Spreadsheet.FormulaError} Column and Row must be smaller than range.table size 
+     * @throws {Spreadsheet.ArgumentTypeError} Range must be of type Spreadsheet.Table, row and column must be of type int
+     * @returns {int|string|boolean}
      * @function
      */
     INDEX(range, row, column) {
-        if (!range instanceof Spreadsheet.Table || typeof row !== 'number' || typeof column !== 'number') {
+        if (!(range instanceof Spreadsheet.Table) || typeof row !== 'number' || typeof column !== 'number') {
             throw new Spreadsheet.ArgumentTypeError(this.position);
         }
         if (column < range.table.length && row < range.table[0].length) {
