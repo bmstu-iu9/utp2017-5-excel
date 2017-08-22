@@ -258,6 +258,7 @@ const Spreadsheet = class extends EventManager {
      * @function
      */
     copyCell(fromRow, fromColumn, toRow, toColumn) {
+        this._expandTo(toRow + 1, toColumn + 1);
         const expression = this.cells[fromRow][fromColumn].expression;
         const lookThroughExpression = expression => {
             if (expression instanceof Spreadsheet._CellReference) {
@@ -346,8 +347,6 @@ const Spreadsheet = class extends EventManager {
                 }
             }
         }
-
-
         return spreadsheet;
     }
 
@@ -484,7 +483,6 @@ Spreadsheet._Cell = class {
     generateFormula() {
         this.formula = this.expression.toString();
     }
-
 };
 
 /**
@@ -652,7 +650,7 @@ Spreadsheet._Expression = class {
      * @param {int} j
      * @returns {string} cell name
      */
-    _cellName(i,j) {
+    static _cellName(i,j) {
         i += 1;
         j += 1;
         let ret = '';
@@ -1445,7 +1443,6 @@ Spreadsheet._CellGraph.Vertex = class {
      * @method
      */
     ifCyclic(current)  {
-
         current._color = 1;
         current.edges.forEach(to => {
             if (to._color === 0) {
