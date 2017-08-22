@@ -8,6 +8,7 @@
  *   manager.triggerEvent(tag, 1, 2, 3);
  *   manager.removeEventListener(listener);
  */
+
 const EventManager = class {
 
     /**
@@ -149,10 +150,10 @@ const Spreadsheet = class extends EventManager {
     }
 
     /**
-     * Puts a formula into a cell and evaluates it
+     * Parses formula and calls setExpression of successful
      * @param {int} i Row index
      * @param {int} j Column index
-     * @param {string} formula Formula
+     * @param {string} formula
      * @throws {Spreadsheet.FormulaSyntaxError} on syntax error in formula
      * @function
      */
@@ -163,8 +164,22 @@ const Spreadsheet = class extends EventManager {
         this.triggerEvent(Spreadsheet.Event.CELL_FORMULA_UPDATED, i, j, formula);
 
         const parser = new Spreadsheet._Parser(formula);
-        const expression = this.cells[i][j].expression = parser.parse();
+        const expression = parser.parse();
 
+        console.log(expression);
+        this._setExpression(i, j, expression);
+    }
+
+    /**
+     * Puts a formula into a cell and evaluates it
+     * @param {int} i Row index
+     * @param {int} j Column index
+     * @param {Spreadsheet._Expression} expression
+     * @function
+     */
+    _setExpression(i, j, expression) {
+        this.cells[i][j].expression = expression;
+        console.log(this.cells[i][j]);
         const vertex = this.graph.getVertexByCoordinates(i, j);
         this.graph.detachVertex(vertex);
         const lookThroughExpression = expression => {
@@ -180,7 +195,6 @@ const Spreadsheet = class extends EventManager {
                         this.graph.addEdge(topVertex, vertex);
                     }
                 }
-
             }
         };
         lookThroughExpression(expression);
@@ -233,8 +247,38 @@ const Spreadsheet = class extends EventManager {
             }
             this.triggerEvent(Spreadsheet.Event.CELL_VALUE_UPDATED, vertex.row, vertex.column, cell.value);
         });
-
     }
+
+    /**
+     * Copies cell to another position
+     * @param {int} fromRow From row index
+     * @param {int} fromColumn From column index
+     * @param {int} toRow To row index
+     * @param {int} toColumn To column index
+     * @function
+     */
+    copyCell(fromRow, fromColumn, toRow, toColumn) {
+        const expression = this.cells[fromRow][fromColumn].expression;
+        const lookThroughExpression = expression => {
+            if (expression instanceof Spreadsheet._CellReference) {
+                return expression.move(fromRow, fromColumn, toRow, toColumn);
+            } else if (expression instanceof Spreadsheet._Expression) {
+                const res = expression.args.map(expr => lookThroughExpression(expr));
+                return new Spreadsheet._Expression(expression.func, res, expression.position);
+            } else if (expression instanceof Spreadsheet._Range) {
+                const start = expression.start.move(fromRow, fromColumn, toRow, toColumn);
+                const end = expression.end.move(fromRow, fromColumn, toRow, toColumn);
+                return new Spreadsheet._Range(start,end);
+            } else {
+                return expression;
+            }
+        };
+        const newExpression = lookThroughExpression(expression);
+        console.log(newExpression);
+        this._setExpression(toRow, toColumn, newExpression);
+        this.cells[toRow][toColumn].generateFormula();
+    }
+
     /**
      * Converts to CSV format
      * @returns {string} CSV
@@ -434,6 +478,13 @@ Spreadsheet._Cell = class {
         this.formula = "";
     }
 
+    /**
+     * Set formula
+     */
+    generateFormula() {
+        this.formula = this.expression.toString();
+    }
+
 };
 
 /**
@@ -559,8 +610,21 @@ Spreadsheet._CellReference = class {
          * @type {boolean}
          */
         this.columnFixed = columnFixed;
+
     }
 
+    move(fromRow, fromColumn, toRow, toColumn) {
+        console.log(this.row);
+        const newRow = this.rowFixed ? fromRow : this.row + (toRow - fromRow) + 1;
+        let newColumn = this.columnFixed ? fromColumn : this.column + (toColumn - fromColumn) + 1;
+        let ret = '';
+        for (let a = 1, b = 26; (newColumn -= a) >= 0; a = b, b *= 26) {
+            ret = String.fromCharCode(parseInt((newColumn % b) / a) + 65) + ret;
+        }
+        ret += newRow.toString();
+        console.log(ret);
+        return new Spreadsheet._CellReference(ret, this.position, this.rowFixed, this.columnFixed);
+    }
 };
 
 /**
@@ -578,7 +642,49 @@ Spreadsheet._Expression = class {
         this.func = func;
         this.args = Array.isArray(args) ? args : [args];
         this.position = position.index + 1;
+        console.log(func.name);
+        console.log(this.toString());
     }
+
+    /**
+     * Returns cell name
+     * @param {int} i
+     * @param {int} j
+     * @returns {string} cell name
+     */
+    _cellName(i,j) {
+        i += 1;
+        j += 1;
+        let ret = '';
+        for (let a = 1, b = 26; (j -= a) >= 0; a = b, b *= 26) {
+            ret = String.fromCharCode(parseInt((j % b) / a) + 65) + ret;
+        }
+        return ret + i.toString();
+    }
+
+    /**
+     * Returns readable expression
+     */
+    toString() {
+        let expression = this.func.name;
+        expression += '(';
+        for (let i = 0; i<this.args.length; i++) {
+            if (this.args[i] instanceof Spreadsheet._CellReference) {
+                expression += this._cellName(this.args[i].row, this.args[i].column);
+            } else if (this.args[i] instanceof Spreadsheet._Range) {
+                expression += this._cellName(this.args[i].start.row, this.args[i].start.column);
+                expression += ':';
+                expression += this._cellName(this.args[i].end.row, this.args[i].end.column);
+                break;
+            } else {
+                expression += this.args[i];
+            }
+            if (i !== this.args.length - 1) expression += ', ';
+        }
+        expression += ')';
+        return expression;
+    }
+
     /**
      * Evaluates formula in the cell
      * @param {Spreadsheet} spreadsheet
@@ -667,7 +773,6 @@ Spreadsheet._Position = class {
         t.body+= String.fromCharCode(code);
         return code === -5 ? this : new Spreadsheet._Position(this.formula, this.index + 1);
     }
-
 
     /**
      * Return next position
