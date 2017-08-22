@@ -51,7 +51,7 @@ const ui = {
                         if (isDraggerVertical) {
                             cell.style.width = cell.style.minWidth = Math.max(CELL_MIN_WIDTH, event.clientX - rect.left) + "px";
                             // Updating cell content
-                            const index = Array.prototype.indexOf.call(cell.parentElement.children, cell);
+                            const index = Array.from(cell.parentElement.children).indexOf(cell);
                             console.log(index);
                             document.querySelectorAll("#table tr").forEach(row =>
                                 !row.children[1].classList.contains("column-header") &&
@@ -81,8 +81,8 @@ const ui = {
             };
             const getLocationOf = cell => {
                 const tableRow = cell.parentElement;
-                const column = Array.prototype.indexOf.call(tableRow.children, cell) - 1;
-                const row = Array.prototype.indexOf.call(tableRow.parentElement.children, tableRow) - 1;
+                const column = Array.from(tableRow.children).indexOf(cell) - 1;
+                const row = Array.from(tableRow.parentElement.children).indexOf(tableRow) - 1;
                 return new ui.CellLocation(row, column);
             };
             document.addEventListener("mousedown", event => {
@@ -210,7 +210,7 @@ const ui = {
                     const dropdown = element.parentElement;
                     const dropwdownToggle = dropdown.previousElementSibling;
                     if (!dropwdownToggle.classList.contains("action-select")) {
-                        Array.prototype.forEach.call(dropdown.children, element => element.classList.remove("selected"));
+                        Array.from(dropdown.children).forEach(element => element.classList.remove("selected"));
                         element.classList.add("selected");
                         const text = element.textContent;
                         if (text) dropwdownToggle.textContent = element.textContent;
@@ -407,7 +407,7 @@ const ui = {
                     case "xlsx":
                         const manager = new XLSXManager();
                         manager.setSpreadsheet(spreadsheet);
-                        manager.fill();
+                        manager.fill(file);
                         break;
                 }
             });
