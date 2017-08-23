@@ -150,7 +150,7 @@ const Spreadsheet = class extends EventManager {
     }
 
     /**
-     * Parses formula and calls setExpression if successful
+     * Parses formula, puts into a cell and evaluates it
      * @param {int} i Row index
      * @param {int} j Column index
      * @param {string} formula
@@ -165,7 +165,6 @@ const Spreadsheet = class extends EventManager {
 
         const parser = new Spreadsheet._Parser(formula);
         const expression = parser.parse();
-
         this._setExpression(i, j, expression);
     }
 
@@ -263,7 +262,7 @@ const Spreadsheet = class extends EventManager {
                 return expression.move(fromRow, fromColumn, toRow, toColumn);
             } else if (expression instanceof Spreadsheet._Expression) {
                 const res = expression.args.map(expr => lookThroughExpression(expr));
-                return new Spreadsheet._Expression(expression.func, res, expression.position);
+                return new Spreadsheet._Expression(expression.func, res, expression.position, expression.operator);
             } else if (expression instanceof Spreadsheet._Range) {
                 const start = expression.start.move(fromRow, fromColumn, toRow, toColumn);
                 const end = expression.end.move(fromRow, fromColumn, toRow, toColumn);
@@ -273,8 +272,24 @@ const Spreadsheet = class extends EventManager {
             }
         };
         const newExpression = lookThroughExpression(expression);
+        let formula = "";
+        if (newExpression instanceof Spreadsheet._Expression) {
+            formula = newExpression.stringifyAndSetPositions();
+        } else if (newExpression instanceof Spreadsheet._CellReference) {
+            formula = Spreadsheet._Expression.cellName(newExpression.row,newExpression.column);
+        } else if (newExpression instanceof Spreadsheet._Range) {
+            let range = Spreadsheet._Expression.cellName(newExpression.start.row, newExpression.start.column);
+            range += ':';
+            formula = range + Spreadsheet._Expression.cellName(newExpression.end.row, newExpression.end.column);
+        } else if (typeof newExpression === 'boolean') {
+            formula = newExpression ? "TRUE" : "FALSE";
+        } else if (typeof newExpression === 'string') {
+            formula = JSON.stringify(newExpression);
+        } else {
+            formula = newExpression;
+        }
         this._setExpression(toRow, toColumn, newExpression);
-        this.cells[toRow][toColumn].generateFormula();
+        this.cells[toRow][toColumn].setFormula(formula);
     }
 
     /**
@@ -459,7 +474,7 @@ Spreadsheet._Cell = class {
     /**
      * @constructor
      */
-    constructor(row, column) {
+    constructor() {
         /**
          * @type {number|string|boolean} Cell value
          */
@@ -477,22 +492,8 @@ Spreadsheet._Cell = class {
     /**
      * Set formula
      */
-    generateFormula() {
-        if (this.expression instanceof Spreadsheet._Expression) {
-            this.formula = this.expression.toString();
-        } else if (this.expression instanceof Spreadsheet._CellReference) {
-            this.formula = Spreadsheet._Expression.cellName(this.expression.row,this.expression.column);
-        } else if (this.expression instanceof Spreadsheet._Range) {
-            let range = Spreadsheet._Expression.cellName(this.expression.start.row, this.expression.start.column);
-            range += ':';
-            this.formula = range + Spreadsheet._Expression.cellName(this.expression.end.row, this.expression.end.column);
-        } else if (typeof this.expression === 'boolean') {
-            this.formula = this.expression ? "TRUE" : "FALSE";
-        } else if (typeof this.expression === 'string') {
-            this.formula = JSON.stringify(this.expression);
-        } else {
-            this.formula = this.expression;
-        }
+    setFormula(formula) {
+        this.formula = formula;
     }
 };
 
@@ -640,11 +641,13 @@ Spreadsheet._Expression = class {
      * @param {Spreadsheet._Function} func
      * @param args Array of function arguments
      * @param {Spreadsheet._Position} position of the Spreadsheet._Token in the formula text
+     * @param {string} operator
      */
-    constructor(func, args, position) {
+    constructor(func, args, position, operator = "") {
         this.func = func;
         this.args = Array.isArray(args) ? args : [args];
         this.position = position.index + 1;
+        this.operator = operator;
     }
 
     /**
@@ -662,29 +665,52 @@ Spreadsheet._Expression = class {
     }
 
     /**
+     * Returns readable expression for function's arguments
+     */
+    argumentsStringifyAndSetPositions(position, separator) {
+        return this.args.map(arg => {
+            if (arg instanceof Spreadsheet._CellReference) {
+                arg.position = position;
+                const name = Spreadsheet._Expression.cellName(arg.row + 1, arg.column + 1);
+                position += name.length + separator.length;
+                return name;
+            } else if (arg instanceof Spreadsheet._Range) {
+                arg.start.position = position;
+                let range = Spreadsheet._Expression.cellName(arg.start.row + 1, arg.start.column + 1);
+                range += ":";
+                range += Spreadsheet._Expression.cellName(arg.end.row + 1, arg.end.column + 1);
+                position += range.length + separator.length;
+                arg.end.position = position - separator.length;
+                return range;
+            } else if (typeof arg === "boolean") {
+                position += arg ? 6 : 7;
+                return arg ? "TRUE" : "FALSE";
+            } else if (typeof  arg === "string") {
+                const str = JSON.stringify(arg);
+                position += str.length + separator.length;
+                return str;
+            } else if (arg instanceof Spreadsheet._Expression) {
+                arg.position = position;
+                const str = arg.stringifyAndSetPositions(position);
+                position += str.length + separator.length;
+                return str;
+            } else {
+                const str = arg.toString();
+                position += str.length + separator.length;
+                return str;
+            }
+        }).join(separator);
+    }
+
+    /**
      * Returns readable expression
      */
-    toString() {
-        let expression = this.func.name;
-        expression += '(';
-        expression += this.args.map(arg => {
-            if (arg instanceof Spreadsheet._CellReference) {
-                return Spreadsheet._Expression.cellName(arg.row+1, arg.column+1);
-            } else if (arg instanceof Spreadsheet._Range) {
-                let range = Spreadsheet._Expression.cellName(arg.start.row+1, arg.start.column+1);
-                range += ':';
-                range += Spreadsheet._Expression.cellName(arg.end.row+1, arg.end.column+1);
-                return range;
-            } else if (typeof arg === 'boolean') {
-                return arg ? "TRUE" : "FALSE";
-            } else if (typeof  arg === 'string') {
-                return JSON.stringify(this.args[i]);
-            } else {
-                return arg.toString();
-            }
-        }).join();
-        expression += ')';
-        return expression;
+    stringifyAndSetPositions(position = 1) {
+        if (this.operator === "") {
+            return this.func.name + "(" + this.argumentsStringifyAndSetPositions(position + this.func.name.length + 1, ", ") + ")";
+        } else {
+            return this.argumentsStringifyAndSetPositions(position, this.operator);
+        }
     }
 
     /**
@@ -1095,13 +1121,13 @@ Spreadsheet._Parser = class {
             console.log("< Terms> :== \"-\" <Term> <Terms>");
             this.token = this.token.next();
             rightArg = this.parseTerm();
-            res = new Spreadsheet._Expression(Spreadsheet._Function.MINUS, [leftArg, rightArg], currentPosition);
+            res = new Spreadsheet._Expression(Spreadsheet._Function.MINUS, [leftArg, rightArg], currentPosition, '-');
             return this.parseTerms(res);
         } else if (this.token.tag === Spreadsheet._Token.Tag.PLUS) {
             console.log("< Terms> :== \"+\" <Term> <Terms>");
             this.token = this.token.next();
             rightArg = this.parseTerm();
-            res = new Spreadsheet._Expression(Spreadsheet._Function.ADD, [leftArg, rightArg], currentPosition);
+            res = new Spreadsheet._Expression(Spreadsheet._Function.ADD, [leftArg, rightArg], currentPosition, '+');
             return this.parseTerms(res);
         } else {
             console.log("< Terms> :== ε");
@@ -1133,13 +1159,13 @@ Spreadsheet._Parser = class {
             console.log("< Factors> :== \"*\" <Factor> <Factors>");
             this.token = this.token.next();
             rightArg = this.parseFactor();
-            res = new Spreadsheet._Expression(Spreadsheet._Function.MULTIPLY, [leftArg, rightArg], currentPosition);
+            res = new Spreadsheet._Expression(Spreadsheet._Function.MULTIPLY, [leftArg, rightArg], currentPosition, '*');
             return this.parseFactors(res);
         } else if (this.token.tag === Spreadsheet._Token.Tag.DIVIDES) {
             console.log("< Factors> :== \"/\" <Factor> <Factors>");
             this.token = this.token.next();
             rightArg = this.parseFactor();
-            res = new Spreadsheet._Expression(Spreadsheet._Function.DIVIDE, [leftArg, rightArg], currentPosition);
+            res = new Spreadsheet._Expression(Spreadsheet._Function.DIVIDE, [leftArg, rightArg], currentPosition, '/');
             return this.parseFactors(res);
         } else {
             console.log("< Factors> :== ε");
@@ -1186,7 +1212,7 @@ Spreadsheet._Parser = class {
             console.log("< Factor> :== \"-\" <Factor>");
             res = this.token.start;
             this.token = this.token.next();
-            return new Spreadsheet._Expression(Spreadsheet._Function.UNMINUS, this.parseFactor(), res);
+            return new Spreadsheet._Expression(Spreadsheet._Function.UNMINUS, this.parseFactor(), res, '-');
         } else {
             throw new Spreadsheet.FormulaError(`Unexpected ${this.token.tag}`, this.token.start.index+1);
         }
