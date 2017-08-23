@@ -293,6 +293,21 @@ const Spreadsheet = class extends EventManager {
     }
 
     /**
+     * Copies cell with first coordinates to every cell within the given range
+     * @param {int} startRow
+     * @param {int} startColumn
+     * @param {int} endRow
+     * @param {int} endColumn
+     */
+    spread(startRow, startColumn, endRow, endColumn) {
+        for (let i = Math.min(startRow, endRow); i <= Math.max(startRow, endRow); i++) {
+            for (let j = Math.min(startColumn, endColumn); j <= Math.max(startColumn, endColumn); j++) {
+                if (i !== startRow || j !== startColumn) this.copyCell(startRow, startColumn, i, j);
+            }
+        }
+    }
+
+    /**
      * Converts to CSV format
      * @returns {string} CSV
      */
