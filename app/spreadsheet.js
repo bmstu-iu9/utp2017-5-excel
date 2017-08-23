@@ -274,7 +274,7 @@ const Spreadsheet = class extends EventManager {
         const newExpression = lookThroughExpression(expression);
         let formula = "";
         if (newExpression instanceof Spreadsheet._Expression) {
-            formula = newExpression.stringifyAndSetPositions();
+            formula = newExpression.stringifiAndSetPositions();
         } else if (newExpression instanceof Spreadsheet._CellReference) {
             formula = Spreadsheet._Expression.cellName(newExpression.row,newExpression.column);
         } else if (newExpression instanceof Spreadsheet._Range) {
@@ -289,7 +289,7 @@ const Spreadsheet = class extends EventManager {
             formula = newExpression;
         }
         this._setExpression(toRow, toColumn, newExpression);
-        this.cells[toRow][toColumn].setFormula(formula);
+        this.cells[toRow][toColumn].formula = formula;
     }
 
     /**
@@ -488,13 +488,6 @@ Spreadsheet._Cell = class {
          */
         this.formula = "";
     }
-
-    /**
-     * Set formula
-     */
-    setFormula(formula) {
-        this.formula = formula;
-    }
 };
 
 /**
@@ -641,9 +634,9 @@ Spreadsheet._Expression = class {
      * @param {Spreadsheet._Function} func
      * @param args Array of function arguments
      * @param {Spreadsheet._Position} position of the Spreadsheet._Token in the formula text
-     * @param {string} operator
+     * @param {boolean} operator
      */
-    constructor(func, args, position, operator = "") {
+    constructor(func, args, position, operator = false) {
         this.func = func;
         this.args = Array.isArray(args) ? args : [args];
         this.position = position.index + 1;
@@ -667,7 +660,7 @@ Spreadsheet._Expression = class {
     /**
      * Returns readable expression for function's arguments
      */
-    argumentsStringifyAndSetPositions(position, separator) {
+    _argumentsStringifiAndSetPositions(position, separator) {
         return this.args.map(arg => {
             if (arg instanceof Spreadsheet._CellReference) {
                 arg.position = position;
@@ -691,7 +684,7 @@ Spreadsheet._Expression = class {
                 return str;
             } else if (arg instanceof Spreadsheet._Expression) {
                 arg.position = position;
-                const str = arg.stringifyAndSetPositions(position);
+                const str = arg.stringifiAndSetPositions(position);
                 position += str.length + separator.length;
                 return str;
             } else {
@@ -705,11 +698,47 @@ Spreadsheet._Expression = class {
     /**
      * Returns readable expression
      */
-    stringifyAndSetPositions(position = 1) {
-        if (this.operator === "") {
-            return this.func.name + "(" + this.argumentsStringifyAndSetPositions(position + this.func.name.length + 1, ", ") + ")";
+    stringifiAndSetPositions(position = 1) {
+        if (this.operator) {
+            switch (this.func) {
+                case Spreadsheet._Function.MULTIPLY:
+                    return this._argumentsStringifiAndSetPositions(position, "*");
+                case Spreadsheet._Function.DIVIDE:
+                    return this._argumentsStringifiAndSetPositions(position, "/");
+                case Spreadsheet._Function.MINUS:
+                    return this._argumentsStringifiAndSetPositions(position, "-");
+                case Spreadsheet._Function.UNMINUS:
+                    const arg = this.args[0];
+                    if (arg instanceof Spreadsheet._CellReference) {
+                        arg.position = position;
+                        const name = Spreadsheet._Expression.cellName(arg.row + 1, arg.column + 1);
+                        position += name.length + 1;
+                        return "-" + name;
+                    } else if (arg instanceof Spreadsheet._Expression) {
+                        arg.position = position;
+                        const str = arg.stringifiAndSetPositions(position);
+                        position += str.length + 1;
+                        return "-" + str;
+                    } else {
+                        const str = arg.toString();
+                        position += str.length + 1;
+                        return "-" + str;
+                    }
+                case Spreadsheet._Function.ADD:
+                    return this._argumentsStringifiAndSetPositions(position, "+");
+                case Spreadsheet._Function.EQ:
+                    return this._argumentsStringifiAndSetPositions(position, "=");
+                case Spreadsheet._Function.LTE:
+                    return this._argumentsStringifiAndSetPositions(position, "<=");
+                case Spreadsheet._Function.LT:
+                    return this._argumentsStringifiAndSetPositions(position, "<");
+                case Spreadsheet._Function.GTE:
+                    return this._argumentsStringifiAndSetPositions(position, ">=");
+                case Spreadsheet._Function.GT:
+                    return this._argumentsStringifiAndSetPositions(position, ">");
+            }
         } else {
-            return this.argumentsStringifyAndSetPositions(position, this.operator);
+            return this.func.name + "(" + this._argumentsStringifiAndSetPositions(position + this.func.name.length + 1, ", ") + ")";
         }
     }
 
@@ -895,11 +924,11 @@ Spreadsheet._Token = class {
                     if (String.fromCodePoint(this.follow.getCharCode()) === "\"") break;
                     if (String.fromCodePoint(this.follow.getCharCode()) === "\\" && this.follow.skip().getCharCode() !== -5) {
                         this.follow = this.follow.skip();
-                        this.body += String.fromCodePoint(this.follow.getCharCode())
+                        this.body += String.fromCodePoint(this.follow.getCharCode());
                         this.follow = this.follow.skip();
                         continue;
                     }
-                    this.body += String.fromCodePoint(this.follow.getCharCode())
+                    this.body += String.fromCodePoint(this.follow.getCharCode());
                     this.follow = this.follow.skip();
                 }
                 this.follow = this.follow.skip();
@@ -1057,7 +1086,7 @@ Spreadsheet._Parser = class {
         if (type) {
             console.log("< ComparedRest> :== <ComparisonOperator> <Compared> <ComparedRest>");
             const rightArg = this.parseCompared();
-            let currentExpression = new Spreadsheet._Expression(type, [leftArg, rightArg], currentPosition);
+            let currentExpression = new Spreadsheet._Expression(type, [leftArg, rightArg], currentPosition, true);
             return this.parseComparedRest(currentExpression);
         } else {
             console.log("< ComparedRest> :== ε");
@@ -1121,13 +1150,13 @@ Spreadsheet._Parser = class {
             console.log("< Terms> :== \"-\" <Term> <Terms>");
             this.token = this.token.next();
             rightArg = this.parseTerm();
-            res = new Spreadsheet._Expression(Spreadsheet._Function.MINUS, [leftArg, rightArg], currentPosition, '-');
+            res = new Spreadsheet._Expression(Spreadsheet._Function.MINUS, [leftArg, rightArg], currentPosition, true);
             return this.parseTerms(res);
         } else if (this.token.tag === Spreadsheet._Token.Tag.PLUS) {
             console.log("< Terms> :== \"+\" <Term> <Terms>");
             this.token = this.token.next();
             rightArg = this.parseTerm();
-            res = new Spreadsheet._Expression(Spreadsheet._Function.ADD, [leftArg, rightArg], currentPosition, '+');
+            res = new Spreadsheet._Expression(Spreadsheet._Function.ADD, [leftArg, rightArg], currentPosition, true);
             return this.parseTerms(res);
         } else {
             console.log("< Terms> :== ε");
@@ -1159,13 +1188,13 @@ Spreadsheet._Parser = class {
             console.log("< Factors> :== \"*\" <Factor> <Factors>");
             this.token = this.token.next();
             rightArg = this.parseFactor();
-            res = new Spreadsheet._Expression(Spreadsheet._Function.MULTIPLY, [leftArg, rightArg], currentPosition, '*');
+            res = new Spreadsheet._Expression(Spreadsheet._Function.MULTIPLY, [leftArg, rightArg], currentPosition, true);
             return this.parseFactors(res);
         } else if (this.token.tag === Spreadsheet._Token.Tag.DIVIDES) {
             console.log("< Factors> :== \"/\" <Factor> <Factors>");
             this.token = this.token.next();
             rightArg = this.parseFactor();
-            res = new Spreadsheet._Expression(Spreadsheet._Function.DIVIDE, [leftArg, rightArg], currentPosition, '/');
+            res = new Spreadsheet._Expression(Spreadsheet._Function.DIVIDE, [leftArg, rightArg], currentPosition, true);
             return this.parseFactors(res);
         } else {
             console.log("< Factors> :== ε");
@@ -1212,7 +1241,7 @@ Spreadsheet._Parser = class {
             console.log("< Factor> :== \"-\" <Factor>");
             res = this.token.start;
             this.token = this.token.next();
-            return new Spreadsheet._Expression(Spreadsheet._Function.UNMINUS, this.parseFactor(), res, '-');
+            return new Spreadsheet._Expression(Spreadsheet._Function.UNMINUS, this.parseFactor(), res, true);
         } else {
             throw new Spreadsheet.FormulaError(`Unexpected ${this.token.tag}`, this.token.start.index+1);
         }
