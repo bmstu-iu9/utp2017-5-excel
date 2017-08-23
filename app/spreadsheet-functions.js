@@ -1212,10 +1212,10 @@ Spreadsheet._Function = Object.freeze({
             }
         });
         let key = 0, value = 0;
-        for (let pair of map) {
-            if (pair[1] > value) {
-                key = pair[0];
-                value = pair[1];
+        for (let [k,v] of map) {
+            if (v > value) {
+                key = k;
+                value = v;
             }
         }
         return key;
