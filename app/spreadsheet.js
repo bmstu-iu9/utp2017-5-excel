@@ -366,7 +366,7 @@ const Spreadsheet = class extends EventManager {
         let i = 0, j = 0;
         for(let row of csv.split(/\r\n|\n/)){
             for(let value of getValues(row)){
-                if(isNaN(value)) value = '\"' + value + '\"';
+                if(isNaN(value)) value = JSON.stringify(value);
                 this.setFormula(i, j++, value);
                 if(j == cols){
                     i++;
