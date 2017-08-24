@@ -276,11 +276,11 @@ const Spreadsheet = class extends EventManager {
         if (newExpression instanceof Spreadsheet._Expression) {
             formula = newExpression.stringifyAndSetPositions();
         } else if (newExpression instanceof Spreadsheet._CellReference) {
-            formula = Spreadsheet._Expression.cellName(newExpression.row+1,newExpression.column+1);
+            formula = Spreadsheet._Expression.cellName(newExpression.row+1,newExpression.column+1, newExpression.rowFixed, newExpression.columnFixed);
         } else if (newExpression instanceof Spreadsheet._Range) {
-            let range = Spreadsheet._Expression.cellName(newExpression.start.row+1, newExpression.start.column+1);
+            let range = Spreadsheet._Expression.cellName(newExpression.start.row+1, newExpression.start.column+1, newExpression.start.rowFixed, newExpression.start.columnFixed);
             range += ':';
-            formula = range + Spreadsheet._Expression.cellName(newExpression.end.row+1, newExpression.end.column+1);
+            formula = range + Spreadsheet._Expression.cellName(newExpression.end.row+1, newExpression.end.column+1, newExpression.end.rowFixed, newExpression.end.columnFixed);
         } else if (typeof newExpression === 'boolean') {
             formula = newExpression ? "TRUE" : "FALSE";
         } else if (typeof newExpression === 'string') {
@@ -290,6 +290,7 @@ const Spreadsheet = class extends EventManager {
         }
         this._setExpression(toRow, toColumn, newExpression);
         this.cells[toRow][toColumn].formula = formula;
+        this.triggerEvent(Spreadsheet.Event.CELL_FORMULA_UPDATED, toRow, toColumn, formula);
     }
 
     /**
@@ -633,8 +634,9 @@ Spreadsheet._CellReference = class {
 
     move(fromRow, fromColumn, toRow, toColumn) {
         const newRow = this.rowFixed ? fromRow : this.row + (toRow - fromRow);
-        let newColumn = this.columnFixed ? fromColumn : this.column + (toColumn - fromColumn) + 1;
-        let cell = Spreadsheet._Expression.cellName(newRow + 1, newColumn);
+        let newColumn = this.columnFixed ? fromColumn : this.column + (toColumn - fromColumn);
+        let cell = Spreadsheet._Expression.cellName(newRow + 1, newColumn + 1, false, false);
+        console.log(newRow, newColumn);
         return new Spreadsheet._CellReference(cell, this.position, this.rowFixed, this.columnFixed);
     }
 };
@@ -664,11 +666,13 @@ Spreadsheet._Expression = class {
      * @param {int} j
      * @returns {string} cell name
      */
-    static cellName(i,j) {
-        let ret = '';
+    static cellName(i,j, rowFoxed, columnFixed) {
+        let ret = "";
         for (let a = 1, b = 26; (j -= a) >= 0; a = b, b *= 26) {
             ret = String.fromCharCode(parseInt((j % b) / a) + 65) + ret;
         }
+        if (columnFixed) ret = "$" + ret;
+        if (rowFoxed) ret += "$";
         return ret + i.toString();
     }
 
@@ -679,14 +683,14 @@ Spreadsheet._Expression = class {
         return this.args.map(arg => {
             if (arg instanceof Spreadsheet._CellReference) {
                 arg.position = position;
-                const name = Spreadsheet._Expression.cellName(arg.row + 1, arg.column + 1);
+                const name = Spreadsheet._Expression.cellName(arg.row + 1, arg.column + 1, arg.rowFixed, arg.columnFixed);
                 position += name.length + separator.length;
                 return name;
             } else if (arg instanceof Spreadsheet._Range) {
                 arg.start.position = position;
-                let range = Spreadsheet._Expression.cellName(arg.start.row + 1, arg.start.column + 1);
+                let range = Spreadsheet._Expression.cellName(arg.start.row + 1, arg.start.column + 1, arg.start.rowFixed, arg.start.columnFixed);
                 range += ":";
-                range += Spreadsheet._Expression.cellName(arg.end.row + 1, arg.end.column + 1);
+                range += Spreadsheet._Expression.cellName(arg.end.row + 1, arg.end.column + 1, arg.end.rowFixed, arg.end.columnFixed);
                 position += range.length + separator.length;
                 arg.end.position = position - separator.length;
                 return range;
@@ -719,14 +723,14 @@ Spreadsheet._Expression = class {
                 const arg = this.args[0];
                 if (arg instanceof Spreadsheet._CellReference) {
                     arg.position = position;
-                    const name = Spreadsheet._Expression.cellName(arg.row + 1, arg.column + 1);
+                    const name = Spreadsheet._Expression.cellName(arg.row + 1, arg.column + 1, arg.rowFixed, arg.columnFixed);
                     position += name.length + 1;
                     return "-" + name;
                 } else if (arg instanceof Spreadsheet._Range) {
                     arg.start.position = position;
-                    let range = Spreadsheet._Expression.cellName(arg.start.row + 1, arg.start.column + 1);
+                    let range = Spreadsheet._Expression.cellName(arg.start.row + 1, arg.start.column + 1, arg.start.rowFixed, arg.start.columnFixed);
                     range += ":";
-                    range += Spreadsheet._Expression.cellName(arg.end.row + 1, arg.end.column + 1);
+                    range += Spreadsheet._Expression.cellName(arg.end.row + 1, arg.end.column + 1, arg.end.rowFixed, arg.end.columnFixed);
                     position += range.length + 1;
                     arg.end.position = position - 1;
                     return "-" + range;
