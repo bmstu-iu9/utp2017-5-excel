@@ -141,6 +141,9 @@ const ui = {
                         ui._setError(new ui.CellLocation(cellEdited.row, cellEdited.column), error.toString());
                     } else console.log(error);
                 }
+                if(cellEdited === ui.selection.start && cellEdited !== ui.selection.end) {
+                    ui.spreadsheet.spread(cellEdited.row, cellEdited.column, ui.selection.end.row, ui.selection.end.column);
+                }
                 cellEdited = null;
             };
             formulaInput.addEventListener("keyup", event => {

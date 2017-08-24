@@ -274,7 +274,7 @@ const Spreadsheet = class extends EventManager {
         const newExpression = lookThroughExpression(expression);
         let formula = "";
         if (newExpression instanceof Spreadsheet._Expression) {
-            formula = newExpression.stringifiAndSetPositions();
+            formula = newExpression.stringifyAndSetPositions();
         } else if (newExpression instanceof Spreadsheet._CellReference) {
             formula = Spreadsheet._Expression.cellName(newExpression.row,newExpression.column);
         } else if (newExpression instanceof Spreadsheet._Range) {
@@ -290,6 +290,21 @@ const Spreadsheet = class extends EventManager {
         }
         this._setExpression(toRow, toColumn, newExpression);
         this.cells[toRow][toColumn].formula = formula;
+    }
+
+    /**
+     * Copies cell with first coordinates to every cell within the given range
+     * @param {int} startRow
+     * @param {int} startColumn
+     * @param {int} endRow
+     * @param {int} endColumn
+     */
+    spread(startRow, startColumn, endRow, endColumn) {
+        for (let i = Math.min(startRow, endRow); i <= Math.max(startRow, endRow); i++) {
+            for (let j = Math.min(startColumn, endColumn); j <= Math.max(startColumn, endColumn); j++) {
+                if (i !== startRow || j !== startColumn) this.copyCell(startRow, startColumn, i, j);
+            }
+        }
     }
 
     /**
@@ -660,7 +675,7 @@ Spreadsheet._Expression = class {
     /**
      * Returns readable expression for function's arguments
      */
-    _argumentsStringifiAndSetPositions(position, separator) {
+    _argumentsStringifyAndSetPositions(position, separator) {
         return this.args.map(arg => {
             if (arg instanceof Spreadsheet._CellReference) {
                 arg.position = position;
@@ -684,7 +699,7 @@ Spreadsheet._Expression = class {
                 return str;
             } else if (arg instanceof Spreadsheet._Expression) {
                 arg.position = position;
-                const str = arg.stringifiAndSetPositions(position);
+                const str = arg.stringifyAndSetPositions(position);
                 position += str.length + separator.length;
                 return str;
             } else {
@@ -698,47 +713,65 @@ Spreadsheet._Expression = class {
     /**
      * Returns readable expression
      */
-    stringifiAndSetPositions(position = 1) {
+    stringifyAndSetPositions(position = 1) {
         if (this.operator) {
+            if (this.func === Spreadsheet._Function.UNMINUS) {
+                const arg = this.args[0];
+                if (arg instanceof Spreadsheet._CellReference) {
+                    arg.position = position;
+                    const name = Spreadsheet._Expression.cellName(arg.row + 1, arg.column + 1);
+                    position += name.length + 1;
+                    return "-" + name;
+                } else if (arg instanceof Spreadsheet._Range) {
+                    arg.start.position = position;
+                    let range = Spreadsheet._Expression.cellName(arg.start.row + 1, arg.start.column + 1);
+                    range += ":";
+                    range += Spreadsheet._Expression.cellName(arg.end.row + 1, arg.end.column + 1);
+                    position += range.length + 1;
+                    arg.end.position = position - 1;
+                    return "-" + range;
+                } else if (typeof arg === "boolean") {
+                    position += arg ? 6 : 7;
+                    return arg ? "-TRUE" : "-FALSE";
+                } else if (typeof  arg === "string") {
+                    const str = JSON.stringify(arg);
+                    position += str.length + 1;
+                    return "-" + str;
+                } else if (arg instanceof Spreadsheet._Expression) {
+                    arg.position = position;
+                    const str = arg.stringifyAndSetPositions(position);
+                    position += str.length + 1;
+                    return "-" + str;
+                } else {
+                    const str = arg.toString();
+                    position += str.length + 1;
+                    return "-" + str;
+                }
+            }
+            let operator = "";
             switch (this.func) {
                 case Spreadsheet._Function.MULTIPLY:
-                    return this._argumentsStringifiAndSetPositions(position, "*");
+                    operator = "*"; break;
                 case Spreadsheet._Function.DIVIDE:
-                    return this._argumentsStringifiAndSetPositions(position, "/");
+                    operator = "/"; break;
                 case Spreadsheet._Function.MINUS:
-                    return this._argumentsStringifiAndSetPositions(position, "-");
-                case Spreadsheet._Function.UNMINUS:
-                    const arg = this.args[0];
-                    if (arg instanceof Spreadsheet._CellReference) {
-                        arg.position = position;
-                        const name = Spreadsheet._Expression.cellName(arg.row + 1, arg.column + 1);
-                        position += name.length + 1;
-                        return "-" + name;
-                    } else if (arg instanceof Spreadsheet._Expression) {
-                        arg.position = position;
-                        const str = arg.stringifiAndSetPositions(position);
-                        position += str.length + 1;
-                        return "-" + str;
-                    } else {
-                        const str = arg.toString();
-                        position += str.length + 1;
-                        return "-" + str;
-                    }
+                    operator = "-"; break;
                 case Spreadsheet._Function.ADD:
-                    return this._argumentsStringifiAndSetPositions(position, "+");
+                    operator = "+"; break;
                 case Spreadsheet._Function.EQ:
-                    return this._argumentsStringifiAndSetPositions(position, "=");
+                    operator = "="; break;
                 case Spreadsheet._Function.LTE:
-                    return this._argumentsStringifiAndSetPositions(position, "<=");
+                    operator = "<="; break;
                 case Spreadsheet._Function.LT:
-                    return this._argumentsStringifiAndSetPositions(position, "<");
+                    operator = "<"; break;
                 case Spreadsheet._Function.GTE:
-                    return this._argumentsStringifiAndSetPositions(position, ">=");
+                    operator = ">="; break;
                 case Spreadsheet._Function.GT:
-                    return this._argumentsStringifiAndSetPositions(position, ">");
+                    operator = ">"; break;
             }
+            return this._argumentsStringifyAndSetPositions(position, operator);
         } else {
-            return this.func.name + "(" + this._argumentsStringifiAndSetPositions(position + this.func.name.length + 1, ", ") + ")";
+            return this.func.name + "(" + this._argumentsStringifyAndSetPositions(position + this.func.name.length + 1, ", ") + ")";
         }
     }
 
