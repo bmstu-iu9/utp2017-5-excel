@@ -314,7 +314,6 @@ const Spreadsheet = class extends EventManager {
     toCSV(){
 
         var csv = "";
-
         for(let cells of this.cells){
             for(let cell of cells){
                 switch(typeof(cell.value)){
@@ -344,14 +343,14 @@ const Spreadsheet = class extends EventManager {
      * @param {string} csv
      * @returns {Spreadsheet} spreadsheet filled with values
      */
-    static fromCSV(csv){
+    fromCSV(csv){
 
-        var spreadsheet = new Spreadsheet();
+        console.log(csv);
         const rows = csv.split(/\r\n|\r|\n/).length;
-        const cols = (csv.split(/\r\n|\r|\n/)[0].match(/,/g) || []).length + 1;
-        spreadsheet._expandTo(rows, cols);
+        const cols = (csv.split(/\r\n|\r|\n/)[0].match(/(?!\B"[^"]*),(?![^"]*"\B)/g) || []).length + 1;
+        this._expandTo(rows, cols);
 
-        var getValues = function(text) {
+        const getValues = (text) => {
             let sep = ",";
             for (var temp = text.split(sep), x = temp.length - 1, tl; x >= 0; x--) {
                 if (temp[x].replace(/"\s+$/, '"').charAt(temp[x].length - 1) == '"') {
@@ -364,17 +363,18 @@ const Spreadsheet = class extends EventManager {
             } return temp;
         };
 
-        var i = 0, j = 0;
+        let i = 0, j = 0;
         for(let row of csv.split(/\r\n|\n/)){
             for(let value of getValues(row)){
-                spreadsheet.setFormula(i, j++, value);
+                if(isNaN(value)) value = '\"' + value + '\"';
+                this.setFormula(i, j++, value);
                 if(j == cols){
                     i++;
                     j = 0;
                 }
             }
         }
-        return spreadsheet;
+
     }
 
 };

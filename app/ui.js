@@ -55,7 +55,7 @@ const ui = {
                             console.log(index);
                             document.querySelectorAll("#table tr").forEach(row =>
                                 !row.children[1].classList.contains("column-header") &&
-                                    ui._updateCellText(row.children[index]));
+                                ui._updateCellText(row.children[index]));
                         } else {
                             cell.style.height = Math.max(CELL_MIN_HEIGHT, event.clientY - rect.top) + "px";
                         }
@@ -221,7 +221,7 @@ const ui = {
                     }
                     dropdown.dispatchEvent(new CustomEvent("change", {detail: {
                         value: dropdown.classList.contains("color") ?
-                            element.style.backgroundColor : element.getAttribute("data-value")
+                        element.style.backgroundColor : element.getAttribute("data-value")
                     }}));
                     hideDropdowns();
                 } else if (element.matches(".dropdown")) {
@@ -404,7 +404,7 @@ const ui = {
                 switch (file.name.split(".").pop()) {
                     case "csv":
                         const fileReader = new FileReader();
-                        fileReader.onload = content => spreadsheet.fromCSV(content);
+                        fileReader.onload = content => spreadsheet.fromCSV(fileReader.result);
                         fileReader.readAsText(file);
                         break;
                     case "xlsx":
@@ -462,7 +462,7 @@ const ui = {
                     text = value ? "TRUE" : "FALSE";
                     break;
                 case "undefined":
-                	break;
+                    break;
                 default:
                     error = "Calculated value is not printable";
 
@@ -700,8 +700,8 @@ const ui = {
 
         let fontFamily = null;
         ui.selection.forEachCell(cell => fontFamily = fontFamily === null ? cell.style.fontFamily || "\"Open Sans\"" :
-                fontFamily === "default" ? "default" :
-                fontFamily === (cell.style.fontFamily || "\"Open Sans\"") ? fontFamily : "default");
+            fontFamily === "default" ? "default" :
+            fontFamily === (cell.style.fontFamily || "\"Open Sans\"") ? fontFamily : "default");
         const fontFamilySelect = document.getElementById("font-family");
         if (fontFamily === "default") {
             fontFamilySelect.previousElementSibling.classList.add("ambiguous");
@@ -712,8 +712,8 @@ const ui = {
 
         let fontSize = null;
         ui.selection.forEachCell(cell => fontSize = fontSize === null ? cell.style.fontSize || "12pt" :
-                fontSize === "default" ? "default" :
-                fontSize === (cell.style.fontSize || "12pt") ? fontSize : "default");
+            fontSize === "default" ? "default" :
+            fontSize === (cell.style.fontSize || "12pt") ? fontSize : "default");
         const fontSizeSelect = document.getElementById("font-size");
         if (fontSize === "default") {
             fontSizeSelect.previousElementSibling.classList.add("ambiguous");
