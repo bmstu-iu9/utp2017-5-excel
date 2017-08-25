@@ -271,13 +271,13 @@ const ui = {
             document.getElementById("border-right").addEventListener("click", event => {
                 if (event.target.classList.contains("disabled")) return;
                 ui.selection.forEachCell((cell, i, j) =>
-                    j === ui.selection.width() && (cell.style.borderRight = getBorder())
+                    j === ui.selection.width() - 1 && (cell.style.borderRight = getBorder())
                 );
             });
             document.getElementById("border-bottom").addEventListener("click", event => {
                 if (event.target.classList.contains("disabled")) return;
                 ui.selection.forEachCell((cell, i, j) =>
-                    i === ui.selection.height() && (cell.style.borderBottom = getBorder())
+                    i === ui.selection.height() - 1 && (cell.style.borderBottom = getBorder())
                 );
             });
             document.getElementById("border-left").addEventListener("click", event => {
@@ -289,20 +289,20 @@ const ui = {
             document.getElementById("border-horizontal").addEventListener("click", event => {
                 if (event.target.classList.contains("disabled")) return;
                 ui.selection.forEachCell((cell, i, j) =>
-                    i !== ui.selection.height() && (cell.style.borderBottom = getBorder())
+                    i !== ui.selection.height() - 1 && (cell.style.borderBottom = getBorder())
                 );
             });
             document.getElementById("border-vertical").addEventListener("click", event => {
                 if (event.target.classList.contains("disabled")) return;
                 ui.selection.forEachCell((cell, i, j) =>
-                    j !== ui.selection.width() && (cell.style.borderRight = getBorder())
+                    j !== ui.selection.width() - 1 && (cell.style.borderRight = getBorder())
                 );
             });
             document.getElementById("border-inner").addEventListener("click", event => {
                 if (event.target.classList.contains("disabled")) return;
                 ui.selection.forEachCell((cell, i, j) => {
-                    if (i !== ui.selection.height()) cell.style.borderBottom = getBorder();
-                    if (j !== ui.selection.width()) cell.style.borderRight = getBorder();
+                    if (i !== ui.selection.height() - 1) cell.style.borderBottom = getBorder();
+                    if (j !== ui.selection.width() - 1) cell.style.borderRight = getBorder();
                 });
             });
             document.getElementById("border-outer").addEventListener("click", event => {
@@ -310,8 +310,8 @@ const ui = {
                 ui.selection.forEachCell((cell, i, j, row, column) => {
                     if (!i) ui._getCellByCoordinates(row - 1, column).style.borderBottom = getBorder();
                     if (!j) ui._getCellByCoordinates(row, column - 1).style.borderRight = getBorder();
-                    if (i === ui.selection.height()) cell.style.borderBottom = getBorder();
-                    if (j === ui.selection.width()) cell.style.borderRight = getBorder();
+                    if (i === ui.selection.height() - 1) cell.style.borderBottom = getBorder();
+                    if (j === ui.selection.width() - 1) cell.style.borderRight = getBorder();
                 });
             });
             document.getElementById("border-all").addEventListener("click", event => {
@@ -341,16 +341,16 @@ const ui = {
                 switch (event.detail.value) {
                     case "right":
                         buffer = ui.spreadsheet.bufferize(ui.selection.start.row, ui.selection.start.column,
-                            ui.selection.start.row + ui.buffer.height(), ui.tableWidth() - 1);
+                            ui.selection.start.row + ui.buffer.height() - 1, ui.tableWidth() - 1);
                         ui.spreadsheet.paste(buffer, ui.selection.start.row, ui.selection.start.column + ui.buffer.width());
                         break;
                     case "down":
                         buffer = ui.spreadsheet.bufferize(ui.selection.start.row, ui.selection.start.column,
-                            ui.tableHeight() - 1, ui.selection.start.column + ui.buffer.width());
+                            ui.tableHeight() - 1, ui.selection.start.column + ui.buffer.width() - 1);
                         ui.spreadsheet.paste(buffer, ui.selection.start.row + ui.buffer.height(), ui.selection.start.column);
                         break;
                 }
-                ui.spreadsheet.paste(ui.buffer, ui.selection.start.row, ui.selection.end.column);
+                ui.spreadsheet.paste(ui.buffer, ui.selection.start.row, ui.selection.start.column);
             });
             document.getElementById("clear").addEventListener("click", event => {
                 if (event.target.classList.contains("disabled")) return;
@@ -361,12 +361,12 @@ const ui = {
                 switch (event.detail.value) {
                     case "right":
                         buffer = ui.spreadsheet.bufferize(ui.selection.topLeftRow(), ui.selection.topLeftColumn(),
-                            ui.selection.topLeftRow() + ui.selection.height(), ui.tableWidth() - 1);
+                            ui.selection.topLeftRow() + ui.selection.height() - 1, ui.tableWidth() - 1);
                         ui.spreadsheet.paste(buffer, ui.selection.topLeftRow(), ui.selection.topLeftColumn() + ui.selection.width());
                         break;
                     case "down":
                         buffer = ui.spreadsheet.bufferize(ui.selection.topLeftRow(), ui.selection.topLeftColumn(),
-                            ui.tableHeight() - 1, ui.selection.topLeftRow() + ui.selection.width());
+                            ui.tableHeight() - 1, ui.selection.topLeftColumn() + ui.selection.width() - 1);
                         ui.spreadsheet.paste(buffer, ui.selection.topLeftRow() + ui.selection.height(), ui.selection.topLeftColumn());
                         break;
                 }
@@ -377,12 +377,12 @@ const ui = {
                 switch (event.detail.value) {
                     case "left":
                         buffer = ui.spreadsheet.bufferize(ui.selection.topLeftRow(), ui.selection.topLeftColumn() + ui.selection.width(),
-                            ui.selection.topLeftRow() + ui.selection.height(), ui.tableWidth() - 1);
+                            ui.selection.topLeftRow() + ui.selection.height() - 1, ui.tableWidth() - 1);
                         ui.spreadsheet.paste(buffer, ui.selection.topLeftRow(), ui.selection.topLeftColumn());
                         break;
                     case "up":
                         buffer = ui.spreadsheet.bufferize(ui.selection.topLeftRow() + ui.selection.height(), ui.selection.topLeftColumn(),
-                            ui.tableHeight() - 1, ui.selection.topLeftRow() + ui.selection.width());
+                            ui.tableHeight() - 1, ui.selection.topLeftRow() + ui.selection.width() - 1);
                         ui.spreadsheet.paste(buffer, ui.selection.topLeftRow(), ui.selection.topLeftColumn());
                         break;
                 }
@@ -767,7 +767,7 @@ const ui = {
          * @returns {int}
          */
         width() {
-            return Math.abs(this.end.column - this.start.column);
+            return Math.abs(this.end.column - this.start.column) + 1;
         },
 
         /**
@@ -775,7 +775,7 @@ const ui = {
          * @returns {int}
          */
         height() {
-            return Math.abs(this.end.row - this.start.row);
+            return Math.abs(this.end.row - this.start.row) + 1;
         },
 
         /**
@@ -809,9 +809,9 @@ const ui = {
                 cell.classList.add("selected");
                 if(row === this.start.row && column === this.start.column) cell.classList.add("selected-first");
                 if(i === 0) ui._getCellByCoordinates(row - 1, column).classList.add("selection-border-bottom");
-                if(i === this.height()) cell.classList.add("selection-border-bottom");
+                if(i === this.height() - 1) cell.classList.add("selection-border-bottom");
                 if(j === 0) ui._getCellByCoordinates(row, column - 1).classList.add("selection-border-right");
-                if(j === this.width()) cell.classList.add("selection-border-right");
+                if(j === this.width() - 1) cell.classList.add("selection-border-right");
             });
 
             ui._setTableSelectionChanged();
@@ -847,9 +847,9 @@ const ui = {
             const startRow = this.topLeftRow();
             const startColumn = this.topLeftColumn();
             const rows = document.querySelectorAll("#table tr");
-            for(let i = startRow; i <= startRow + this.height(); i++) {
+            for(let i = startRow; i <= startRow + this.height() - 1; i++) {
                 const cells = rows[i + 1].children;
-                for (let j = startColumn; j <= startColumn + this.width(); j++) {
+                for (let j = startColumn; j <= startColumn + this.width() - 1; j++) {
                     callback(cells[j + 1], i - startRow, j - startColumn, i, j);
                 }
             }

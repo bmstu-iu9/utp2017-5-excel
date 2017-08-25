@@ -176,6 +176,7 @@ const Spreadsheet = class extends EventManager {
      * @function
      */
     _setExpression(i, j, expression) {
+
         this.cells[i][j].expression = expression;
         const vertex = this.graph.getVertexByCoordinates(i, j);
         this.graph.detachVertex(vertex);
@@ -256,38 +257,9 @@ const Spreadsheet = class extends EventManager {
      */
     copyCell(fromRow, fromColumn, toRow, toColumn) {
         this._expandTo(toRow + 1, toColumn + 1);
-        const expression = this.cells[fromRow][fromColumn].expression;
-        const lookThroughExpression = expression => {
-            if (expression instanceof Spreadsheet._CellReference) {
-                return expression.move(fromRow, fromColumn, toRow, toColumn);
-            } else if (expression instanceof Spreadsheet._Expression) {
-                const res = expression.args.map(expr => lookThroughExpression(expr));
-                return new Spreadsheet._Expression(expression.func, res, expression.position, expression.operator);
-            } else if (expression instanceof Spreadsheet._Range) {
-                const start = expression.start.move(fromRow, fromColumn, toRow, toColumn);
-                const end = expression.end.move(fromRow, fromColumn, toRow, toColumn);
-                return new Spreadsheet._Range(start,end);
-            } else {
-                return expression;
-            }
-        };
-        const newExpression = lookThroughExpression(expression);
-        let formula = "";
-        if (newExpression instanceof Spreadsheet._Expression) {
-            formula = newExpression.stringifyAndSetPositions();
-        } else if (newExpression instanceof Spreadsheet._CellReference) {
-            formula = Spreadsheet._Expression.cellName(newExpression.row+1,newExpression.column+1, newExpression.rowFixed, newExpression.columnFixed);
-        } else if (newExpression instanceof Spreadsheet._Range) {
-            let range = Spreadsheet._Expression.cellName(newExpression.start.row+1, newExpression.start.column+1, newExpression.start.rowFixed, newExpression.start.columnFixed);
-            range += ':';
-            formula = range + Spreadsheet._Expression.cellName(newExpression.end.row+1, newExpression.end.column+1, newExpression.end.rowFixed, newExpression.end.columnFixed);
-        } else if (typeof newExpression === 'boolean') {
-            formula = newExpression ? "TRUE" : "FALSE";
-        } else if (typeof newExpression === 'string') {
-            formula = JSON.stringify(newExpression);
-        } else {
-            formula = newExpression;
-        }
+        const newExpression = Spreadsheet._Cell.moveExpression(this.cells[fromRow][fromColumn].expression,
+            fromRow, fromColumn, toRow, toColumn);
+        const formula = Spreadsheet._Cell.stringifyExpression(newExpression);
         this._setExpression(toRow, toColumn, newExpression);
         this.cells[toRow][toColumn].formula = formula;
         this.triggerEvent(Spreadsheet.Event.CELL_FORMULA_UPDATED, toRow, toColumn, formula);
@@ -306,6 +278,49 @@ const Spreadsheet = class extends EventManager {
                 if (i !== startRow || j !== startColumn) this.copyCell(startRow, startColumn, i, j);
             }
         }
+    }
+
+    /**
+     * Saves current state of the spreadsheet within the given range
+     * @param {int} startRow
+     * @param {int} startColumn
+     * @param {int} endRow
+     * @param {int} endColumn
+     */
+    bufferize(startRow, startColumn, endRow, endColumn) {
+        return new Spreadsheet.CellBuffer(this, startRow, startColumn, endRow, endColumn);
+    }
+
+    /**
+     * Inserts cells from buffer into the spreadsheet
+     * @param {Spreadsheet.CellBuffer} buffer
+     * @param {int} row
+     * @param {int} column
+     */
+    paste(buffer, row, column) {
+
+        let lastRow = this.cells.length - 1;
+        let lastColumn = (this.cells.length && this.cells[0].length) - 1;
+        buffer.expressions.forEach((expressionRow, i) => expressionRow.forEach((expression, j) => {
+            if (expression == null) return;
+            if (row + i > lastRow) lastRow = row + i;
+            if (column + j > lastColumn) lastColumn = column + j;
+        }));
+        this._expandTo(lastRow + 1, lastColumn + 1);
+
+        buffer.expressions.forEach((expressionRow, i) => expressionRow.forEach((expression, j) => {
+            const toRow = row + i;
+            const toColumn = column + j;
+            const newExpression = Spreadsheet._Cell.moveExpression(expression,
+                buffer.startRow + i, buffer.startColumn + j, toRow, toColumn);
+            const formula = Spreadsheet._Cell.stringifyExpression(newExpression);
+            if(expression != null || this._cellExists(toRow, toColumn)) {
+                this._setExpression(toRow, toColumn, newExpression);
+                this.cells[toRow][toColumn].formula = formula;
+            }
+            this.triggerEvent(Spreadsheet.Event.CELL_FORMULA_UPDATED, toRow, toColumn, formula);
+        }));
+
     }
 
     /**
@@ -504,6 +519,40 @@ Spreadsheet._Cell = class {
          */
         this.formula = "";
     }
+
+    static moveExpression(expression, fromRow, fromColumn, toRow, toColumn) {
+        if (expression instanceof Spreadsheet._CellReference) {
+            return expression.move(fromRow, fromColumn, toRow, toColumn);
+        } else if (expression instanceof Spreadsheet._Expression) {
+            const res = expression.args.map(expression =>
+                Spreadsheet._Cell.moveExpression(expression, fromRow, fromColumn, toRow, toColumn));
+            return new Spreadsheet._Expression(expression.func, res, expression.position, expression.operator);
+        } else if (expression instanceof Spreadsheet._Range) {
+            const start = expression.start.move(fromRow, fromColumn, toRow, toColumn);
+            const end = expression.end.move(fromRow, fromColumn, toRow, toColumn);
+            return new Spreadsheet._Range(start,end);
+        } else {
+            return expression;
+        }
+    }
+
+    static stringifyExpression(expression) {
+        if (expression instanceof Spreadsheet._Expression) {
+            return expression.stringifyAndSetPositions();
+        } else if (expression instanceof Spreadsheet._CellReference) {
+            return expression.toString();
+        } else if (expression instanceof Spreadsheet._Range) {
+            return expression.toString();
+        } else if (typeof expression === "boolean") {
+            return expression ? "TRUE" : "FALSE";
+        } else if (typeof expression === "string") {
+            return JSON.stringify(expression);
+        } else if (typeof expression === "number") {
+            return expression + "";
+        }
+        return "";
+    }
+
 };
 
 /**
@@ -588,6 +637,11 @@ Spreadsheet._Range = class {
     getEndColumn() {
         return Math.max(this.start.column, this.end.column);
     }
+
+    toString() {
+        return this.start.toString() + ":" + this.end.toString();
+    }
+
 };
 
 /**
@@ -597,18 +651,14 @@ Spreadsheet._Range = class {
 Spreadsheet._CellReference = class {
     /**
      * @constructor
-     * @param {String} cell name, letter/s + number/s
+     * @param {int} row
+     * @param {int} column
      * @param {int} position
-     * @param {int} rowFixed
-     * @param {int} columnFixed
+     * @param {boolean} rowFixed
+     * @param {boolean} columnFixed
      */
-    constructor(cell, position, rowFixed, columnFixed) {
-        let column = 0;
-        let i = 0;
-        for (; cell.charCodeAt(i) > 64;  i++) {
-            column += (cell.charCodeAt(i) - 65) + 26 * i;
-        }
-        const row = (+cell.slice(i)) - 1;
+    constructor(row, column, position, rowFixed, columnFixed) {
+
         /**
          * @type {int}
          */
@@ -633,12 +683,40 @@ Spreadsheet._CellReference = class {
     }
 
     move(fromRow, fromColumn, toRow, toColumn) {
-        const newRow = this.rowFixed ? fromRow : this.row + (toRow - fromRow);
-        let newColumn = this.columnFixed ? fromColumn : this.column + (toColumn - fromColumn);
-        let cell = Spreadsheet._Expression.cellName(newRow + 1, newColumn + 1, false, false);
-        console.log(newRow, newColumn);
-        return new Spreadsheet._CellReference(cell, this.position, this.rowFixed, this.columnFixed);
+        const newRow = this.rowFixed ? this.row : this.row + (toRow - fromRow);
+        const newColumn = this.columnFixed ? this.column : this.column + (toColumn - fromColumn);
+        return new Spreadsheet._CellReference(newRow, newColumn, this.position, this.rowFixed, this.columnFixed);
     }
+
+    toString() {
+        let string = "";
+        let j = this.column + 1;
+        for (let a = 1, b = 26; (j -= a) >= 0; a = b, b *= 26) {
+            string = String.fromCharCode(parseInt((j % b) / a) + 65) + string;
+        }
+        if (this.columnFixed) string = "$" + string;
+        if (this.rowFixed) string += "$";
+        return string + (this.row + 1).toString();
+    }
+
+    /**
+     * Creates a CellReference from a string representation of a cell
+     * @param {string} cell
+     * @param {int} position
+     * @param {boolean} rowFixed
+     * @param {boolean} columnFixed
+     * @returns {Spreadsheet._CellReference}
+     */
+    static fromString(cell, position, rowFixed, columnFixed) {
+        let column = 0;
+        let i = 0;
+        for (; cell.charCodeAt(i) > 64;  i++) {
+            column += (cell.charCodeAt(i) - 65) + 26 * i;
+        }
+        const row = (+cell.slice(i)) - 1;
+        return new Spreadsheet._CellReference(row, column, position, rowFixed, columnFixed);
+    }
+
 };
 
 /**
@@ -661,36 +739,18 @@ Spreadsheet._Expression = class {
     }
 
     /**
-     * Returns cell name
-     * @param {int} i
-     * @param {int} j
-     * @returns {string} cell name
-     */
-    static cellName(i,j, rowFoxed, columnFixed) {
-        let ret = "";
-        for (let a = 1, b = 26; (j -= a) >= 0; a = b, b *= 26) {
-            ret = String.fromCharCode(parseInt((j % b) / a) + 65) + ret;
-        }
-        if (columnFixed) ret = "$" + ret;
-        if (rowFoxed) ret += "$";
-        return ret + i.toString();
-    }
-
-    /**
      * Returns readable expression for function's arguments
      */
     _argumentsStringifyAndSetPositions(position, separator) {
         return this.args.map(arg => {
             if (arg instanceof Spreadsheet._CellReference) {
                 arg.position = position;
-                const name = Spreadsheet._Expression.cellName(arg.row + 1, arg.column + 1, arg.rowFixed, arg.columnFixed);
+                const name = arg.toString();
                 position += name.length + separator.length;
                 return name;
             } else if (arg instanceof Spreadsheet._Range) {
                 arg.start.position = position;
-                let range = Spreadsheet._Expression.cellName(arg.start.row + 1, arg.start.column + 1, arg.start.rowFixed, arg.start.columnFixed);
-                range += ":";
-                range += Spreadsheet._Expression.cellName(arg.end.row + 1, arg.end.column + 1, arg.end.rowFixed, arg.end.columnFixed);
+                let range = arg.toString();
                 position += range.length + separator.length;
                 arg.end.position = position - separator.length;
                 return range;
@@ -723,14 +783,12 @@ Spreadsheet._Expression = class {
                 const arg = this.args[0];
                 if (arg instanceof Spreadsheet._CellReference) {
                     arg.position = position;
-                    const name = Spreadsheet._Expression.cellName(arg.row + 1, arg.column + 1, arg.rowFixed, arg.columnFixed);
+                    const name = arg.toString();
                     position += name.length + 1;
                     return "-" + name;
                 } else if (arg instanceof Spreadsheet._Range) {
                     arg.start.position = position;
-                    let range = Spreadsheet._Expression.cellName(arg.start.row + 1, arg.start.column + 1, arg.start.rowFixed, arg.start.columnFixed);
-                    range += ":";
-                    range += Spreadsheet._Expression.cellName(arg.end.row + 1, arg.end.column + 1, arg.end.rowFixed, arg.end.columnFixed);
+                    let range = arg.toString();
                     position += range.length + 1;
                     arg.end.position = position - 1;
                     return "-" + range;
@@ -1300,7 +1358,7 @@ Spreadsheet._Parser = class {
         if (callArgsOrEndOfRange === null) {
             let match = res.match(regExps);
             if (match) {
-                return new Spreadsheet._CellReference(match[2]+match[4], currentPosition.index + 1, match[3] === '$', match[1] === '$');
+                return Spreadsheet._CellReference.fromString(match[2]+match[4], currentPosition.index + 1, match[3] === '$', match[1] === '$');
             } else {
                 throw new Spreadsheet.FormulaError(`'(' expected`, index + 1 - res.length);
             }
@@ -1308,14 +1366,14 @@ Spreadsheet._Parser = class {
             let start = undefined;
             let match = res.match(regExps);
             if (match) {
-                start = new Spreadsheet._CellReference(match[2]+match[4], currentPosition.index + 1, match[3] === '$', match[1] === '$');
+                start = Spreadsheet._CellReference.fromString(match[2]+match[4], currentPosition.index + 1, match[3] === '$', match[1] === '$');
             } else {
                 throw new Spreadsheet.FormulaError(`Undefined function '${res}'`, index + 1 - res.length);
             }
             let end = undefined;
             match = callArgsOrEndOfRange.match(regExps);
             if (match) {
-                end = new Spreadsheet._CellReference(match[2]+match[4], this.token.start.index + 1, match[3] === '$', match[1] === '$');
+                end = Spreadsheet._CellReference.fromString(match[2]+match[4], this.token.start.index + 1, match[3] === '$', match[1] === '$');
             } else {
                 throw new Spreadsheet.FormulaError(`Undefined function '${res}'`, index + 1 - res.length);
             }
@@ -1565,4 +1623,58 @@ Spreadsheet._CellGraph.Vertex = class {
         }
         if (this.cycle.indexOf(this) === -1) this.cycle.push(this);
     }
+};
+
+Spreadsheet.CellBuffer = class {
+
+    /**
+     *
+     * @param {Spreadsheet} spreadsheet
+     * @param {int} startRow
+     * @param {int} startColumn
+     * @param {int} endRow
+     * @param {int} endColumn
+     */
+    constructor(spreadsheet, startRow, startColumn, endRow, endColumn) {
+
+        /**
+         * Top-left row index
+         */
+        this.startRow = startRow;
+
+        /**
+         * Top-left column index
+         */
+        this.startColumn = startColumn;
+
+        /**
+         * Matrix of expressions
+         * @type {Array<Array<number|string|boolean|Spreadsheet._Expression|Spreadsheet._CellReference|Spreadsheet._Range>>}
+         */
+        this.expressions = [];
+
+        for (let i = startRow; i <= endRow; i++) {
+            this.expressions[i - startRow] = [];
+            for (let j = startColumn; j <= endColumn; j++) {
+                this.expressions[i - startRow][j - startColumn] = spreadsheet._cellExists(i, j) ?
+                    spreadsheet.cells[i][j].expression : undefined;
+            }
+        }
+
+    }
+
+    /**
+     * @returns {int}
+     */
+    width() {
+        return this.expressions[0].length;
+    }
+
+    /**
+     * @returns {int}
+     */
+    height() {
+        return this.expressions.length;
+    }
+
 };
