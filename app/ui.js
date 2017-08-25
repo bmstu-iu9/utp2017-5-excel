@@ -147,7 +147,7 @@ const ui = {
                 cellEdited = null;
             };
             formulaInput.addEventListener("keyup", event => {
-                if (event.code === "Enter") {
+                if (event.code === "Enter" || event.code === "NumpadEnter") {
                     // Saving formula on Enter
                     applyFormula();
                     event.preventDefault();
@@ -155,7 +155,7 @@ const ui = {
             });
             formulaInput.addEventListener("keydown", event => {
                 // Preventing line breaking in the input
-                if (event.code === "Enter") event.preventDefault();
+                if (event.code === "Enter" || event.code === "NumpadEnter") event.preventDefault();
                 else updateCell();
             });
             // Saving formula, if the input loses focus
