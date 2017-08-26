@@ -343,7 +343,7 @@ const Spreadsheet = class extends EventManager {
                         csv += cell.value.toString() + ",";
                         break;
                     default:
-                        csv += ",";
+                        csv += ","
                 }
             }
             csv = csv.slice(0,-1);
@@ -361,24 +361,46 @@ const Spreadsheet = class extends EventManager {
      */
     fromCSV(csv){
 
-        console.log(csv);
         const rows = csv.split(/\r\n|\r|\n/).length;
-        const cols = (csv.split(/\r\n|\r|\n/)[0].match(/(?!\B"[^"]*),(?![^"]*"\B)/g) || []).length + 1;
+        let cols = 1, found = 0;
+        for(let i in csv){
+            if(csv[i] == '\n'){
+                break;
+            }
+            if((csv[i] == ",") && found%2 == 0){
+                cols++;
+            }else if(csv[i] == "\""){
+                found++;
+            }
+        }
+
         this._expandTo(rows, cols);
 
         const getValues = (text) => {
-            let sep = ",";
-            for (var temp = text.split(sep), x = temp.length - 1, tl; x >= 0; x--) {
-                if (temp[x].replace(/"\s+$/, '"').charAt(temp[x].length - 1) == '"') {
-                    if ((tl = temp[x].replace(/^\s+"/, '"')).length > 1 && tl.charAt(0) == '"') {
-                        temp[x] = temp[x].replace(/^\s*"|"\s*$/g, '').replace(/""/g, '"');
-                    } else if (x) {
-                        temp.splice(x - 1, 2, [temp[x - 1], temp[x]].join(sep));
-                    } else temp = temp.shift().split(sep).concat(temp);
-                } else temp[x].replace(/""/g, '"');
-            } return temp;
+            text = text.split('\\n').join('\n');
+            let found = 0, result = [], temp = '';
+            for(let i in text){
+                switch (text[i]){
+                    case '\"':
+                        found++;
+                        temp = temp.concat(text[i]);
+                        break;
+                    case ',':
+                    case '\n':
+                        if(!(found % 2)){
+                            result.push(temp);
+                            temp = '';
+                            break;
+                        }
+                    default:
+                        temp = temp.concat(text[i]);
+                }
+            }
+            result.push(temp);
+            return result;
         };
 
+        csv = JSON.stringify(csv).slice(1,-1);
         let i = 0, j = 0;
         for(let row of csv.split(/\r\n|\n/)){
             for(let value of getValues(row)){
@@ -390,7 +412,6 @@ const Spreadsheet = class extends EventManager {
                 }
             }
         }
-
     }
 
 };
@@ -613,7 +634,7 @@ Spreadsheet._Range = class {
     getStartRow() {
         return Math.min(this.start.row, this.end.row);
     }
-    
+
     /**
      * Calculate start column
      * @returns {int} column of top left range's corner
@@ -621,7 +642,7 @@ Spreadsheet._Range = class {
     getStartColumn() {
         return Math.min(this.start.column, this.end.column);
     }
-    
+
     /**
      * Calculate end row
      * @returns {int} row of bottom right range's corner
@@ -629,7 +650,7 @@ Spreadsheet._Range = class {
     getEndRow() {
         return Math.max(this.start.row, this.end.row);
     }
-    
+
     /**
      * Calculate end column
      * @returns {int} column of bottom right range's corner
@@ -1008,8 +1029,8 @@ Spreadsheet._Token = class {
                 this.tag = Spreadsheet._Token.Tag.COMMA;
                 break;
             case ':':
-               this.tag = Spreadsheet._Token.Tag.COLON;
-               break;
+                this.tag = Spreadsheet._Token.Tag.COLON;
+                break;
             case '=':
                 this.tag = Spreadsheet._Token.Tag.EQUALS;
                 break;
