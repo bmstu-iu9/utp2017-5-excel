@@ -7,27 +7,31 @@
     <title>Spreadsheet</title>
 
     <!-- Open Sans from Google Fonts -->
-    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700&amp;subset=cyrillic" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css?family=Cousine&amp;subset=cyrillic,cyrillic-ext,latin-ext" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,400i,600,600i,700,700i&amp;subset=cyrillic,cyrillic-ext,latin-ext"
+          rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Cousine&amp;subset=cyrillic,cyrillic-ext,latin-ext"
+          rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
     <link href="style/style.css" rel="stylesheet">
 
     <script src="app/ui.js"></script>
     <script src="app/spreadsheet.js"></script>
+    <script src="app/spreadsheet-functions.js"></script>
+    <script src="app/lib/jszip.js"></script>
+    <script src="app/xlsx-manager.js"></script>
     <script>
 
-"use strict";
+        "use strict";
+        document.addEventListener("DOMContentLoaded", () => {
 
-document.addEventListener("DOMContentLoaded", () => {
+            ui.init();
 
-    ui.init();
+            // Creating new Spreadsheet and attaching it to User Interface
+            const spreadsheet = new Spreadsheet();
+            ui.attach(spreadsheet);
 
-    // Creating new Spreadsheet and attaching it to User Interface
-    const spreadsheet = new Spreadsheet();
-    ui.attach(spreadsheet);
-
-});
+        });
 
     </script>
 
@@ -50,9 +54,384 @@ document.addEventListener("DOMContentLoaded", () => {
         <div id="formula-error"></div>
         <div id="formula"></div>
     </li>
-    <li>Toolbar #2</li>
-    <li>Toolbar #3</li>
-    <li>Toolbar #4</li>
+    <li>
+        <div class="controls-group">
+            <div class="dropdown-wrap">
+                <div class="toggle requires-selection disabled dropdown-toggle select-toggle">Open Sans</div>
+                <ul class="dropdown select" id="font-family">
+                    <li data-value="Open Sans">Open Sans</li>
+                    <li data-value="Arial" style="font-family: Arial;">Arial</li>
+                    <li data-value="Calibri" style="font-family: Calibri;">Calibri</li>
+                    <li data-value="Cambria" style="font-family: Cambria;">Cambria</li>
+                    <li data-value="Segoe UI" style="font-family: 'Segoe UI';">Segoe UI</li>
+                    <li data-value="Times New Roman" style="font-family: 'Times New Roman';">Times New Roman</li>
+                    <li data-value="Tahoma" style="font-family: Tahoma;">Tahoma</li>
+                    <li data-value="Verdana" style="font-family: Verdana;">Verdana</li>
+                </ul>
+            </div>
+            <div class="dropdown-wrap">
+                <div class="toggle requires-selection disabled dropdown-toggle select-toggle">12 pt</div>
+                <ul class="dropdown select" id="font-size">
+                    <li data-value="8">8 pt</li>
+                    <li data-value="9">9 pt</li>
+                    <li data-value="10">10 pt</li>
+                    <li data-value="11">11 pt</li>
+                    <li data-value="12">12 pt</li>
+                    <li data-value="14">14 pt</li>
+                    <li data-value="16">16 pt</li>
+                    <li data-value="18">18 pt</li>
+                    <li data-value="20">20 pt</li>
+                    <li data-value="24">24 pt</li>
+                    <li data-value="36">36 pt</li>
+                </ul>
+            </div>
+            <div class="icon toggle requires-selection disabled material-icons" id="bold">format_bold</div>
+            <div class="icon toggle requires-selection disabled material-icons" id="italic">format_italic</div>
+            <div class="icon toggle requires-selection disabled material-icons" id="underlined">format_underlined</div>
+            <div class="dropdown-wrap">
+                <div class="icon toggle requires-selection disabled dropdown-toggle color-picker material-icons">
+                    format_color_text
+                </div>
+                <ul class="dropdown color" id="color-text">
+                    <li style="background-color: #FFF;"></li>
+                    <li style="background-color: #EBEBEB;"></li>
+                    <li style="background-color: #D2D2D2;"></li>
+                    <li style="background-color: #BBBBBB;"></li>
+                    <li style="background-color: #9F9F9F;"></li>
+                    <li style="background-color: #868686;"></li>
+                    <li style="background-color: #6A6A6A;"></li>
+                    <li style="background-color: #4B4B4B;"></li>
+                    <li style="background-color: #292929;"></li>
+                    <li style="background-color: #000;"></li>
+
+                    <li style="background-color: #93221e;"></li>
+                    <li style="background-color: #b92d2c;"></li>
+                    <li style="background-color: #ed403c;"></li>
+                    <li style="background-color: #f58d74;"></li>
+                    <li style="background-color: #f9d3c0;"></li>
+                    <li style="background-color: #9a4d05;"></li>
+                    <li style="background-color: #c16518;"></li>
+                    <li style="background-color: #f48221;"></li>
+                    <li style="background-color: #fca967;"></li>
+                    <li style="background-color: #fbdbc6;"></li>
+
+                    <li style="background-color: #9b6702;"></li>
+                    <li style="background-color: #c18210;"></li>
+                    <li style="background-color: #f8a51b;"></li>
+                    <li style="background-color: #fcc779;"></li>
+                    <li style="background-color: #fee6ca;"></li>
+                    <li style="background-color: #a19600;"></li>
+                    <li style="background-color: #cbbe00;"></li>
+                    <li style="background-color: #fef102;"></li>
+                    <li style="background-color: #fff685;"></li>
+                    <li style="background-color: #fffbcc;"></li>
+
+                    <li style="background-color: #3e7927;"></li>
+                    <li style="background-color: #569834;"></li>
+                    <li style="background-color: #70be44;"></li>
+                    <li style="background-color: #add68a;"></li>
+                    <li style="background-color: #e0efda;"></li>
+                    <li style="background-color: #006c3b;"></li>
+                    <li style="background-color: #01874c;"></li>
+                    <li style="background-color: #02a860;"></li>
+                    <li style="background-color: #63c094;"></li>
+                    <li style="background-color: #c3dfd0;"></li>
+
+                    <li style="background-color: #006e6f;"></li>
+                    <li style="background-color: #018987;"></li>
+                    <li style="background-color: #02aaad;"></li>
+                    <li style="background-color: #58c4c6;"></li>
+                    <li style="background-color: #bde5e7;"></li>
+                    <li style="background-color: #013d73;"></li>
+                    <li style="background-color: #015092;"></li>
+                    <li style="background-color: #0266b2;"></li>
+                    <li style="background-color: #5c88c5;"></li>
+                    <li style="background-color: #aec5e5;"></li>
+
+                    <li style="background-color: #081c63;"></li>
+                    <li style="background-color: #172e7c;"></li>
+                    <li style="background-color: #27459b;"></li>
+                    <li style="background-color: #5765b0;"></li>
+                    <li style="background-color: #8e94c6;"></li>
+                    <li style="background-color: #38085c;"></li>
+                    <li style="background-color: #491d76;"></li>
+                    <li style="background-color: #5c3092;"></li>
+                    <li style="background-color: #8069af;"></li>
+                    <li style="background-color: #baaed4;"></li>
+
+                    <li style="background-color: #69015a;"></li>
+                    <li style="background-color: #810d70;"></li>
+                    <li style="background-color: #a4228f;"></li>
+                    <li style="background-color: #bc7bb3;"></li>
+                    <li style="background-color: #e0cde0;"></li>
+                    <li style="background-color: #930408;"></li>
+                    <li style="background-color: #ba1118;"></li>
+                    <li style="background-color: #ed1e24;"></li>
+                    <li style="background-color: #f77871;"></li>
+                    <li style="background-color: #fbd3d1;"></li>
+                </ul>
+            </div>
+        </div>
+        <div class="controls-group">
+            <div class="icon switch requires-selection disabled material-icons" data-group="text-align" id="align-left">
+                format_align_left
+            </div>
+            <div class="icon switch requires-selection disabled material-icons" data-group="text-align"
+                 id="align-center">format_align_center
+            </div>
+            <div class="icon switch requires-selection disabled material-icons" data-group="text-align"
+                 id="align-right">format_align_right
+            </div>
+            <div class="icon switch requires-selection disabled material-icons" data-group="text-align"
+                 id="align-justify">format_align_justify
+            </div>
+        </div>
+        <div class="controls-group">
+            <div class="dropdown-wrap">
+                <div class="icon toggle requires-selection disabled dropdown-toggle color-picker material-icons">
+                    format_color_fill
+                </div>
+                <ul class="dropdown color" id="color-fill">
+                    <li style="background-color: #FFF;"></li>
+                    <li style="background-color: #EBEBEB;"></li>
+                    <li style="background-color: #D2D2D2;"></li>
+                    <li style="background-color: #BBBBBB;"></li>
+                    <li style="background-color: #9F9F9F;"></li>
+                    <li style="background-color: #868686;"></li>
+                    <li style="background-color: #6A6A6A;"></li>
+                    <li style="background-color: #4B4B4B;"></li>
+                    <li style="background-color: #292929;"></li>
+                    <li style="background-color: #000;"></li>
+
+                    <li style="background-color: #93221e;"></li>
+                    <li style="background-color: #b92d2c;"></li>
+                    <li style="background-color: #ed403c;"></li>
+                    <li style="background-color: #f58d74;"></li>
+                    <li style="background-color: #f9d3c0;"></li>
+                    <li style="background-color: #9a4d05;"></li>
+                    <li style="background-color: #c16518;"></li>
+                    <li style="background-color: #f48221;"></li>
+                    <li style="background-color: #fca967;"></li>
+                    <li style="background-color: #fbdbc6;"></li>
+
+                    <li style="background-color: #9b6702;"></li>
+                    <li style="background-color: #c18210;"></li>
+                    <li style="background-color: #f8a51b;"></li>
+                    <li style="background-color: #fcc779;"></li>
+                    <li style="background-color: #fee6ca;"></li>
+                    <li style="background-color: #a19600;"></li>
+                    <li style="background-color: #cbbe00;"></li>
+                    <li style="background-color: #fef102;"></li>
+                    <li style="background-color: #fff685;"></li>
+                    <li style="background-color: #fffbcc;"></li>
+
+                    <li style="background-color: #3e7927;"></li>
+                    <li style="background-color: #569834;"></li>
+                    <li style="background-color: #70be44;"></li>
+                    <li style="background-color: #add68a;"></li>
+                    <li style="background-color: #e0efda;"></li>
+                    <li style="background-color: #006c3b;"></li>
+                    <li style="background-color: #01874c;"></li>
+                    <li style="background-color: #02a860;"></li>
+                    <li style="background-color: #63c094;"></li>
+                    <li style="background-color: #c3dfd0;"></li>
+
+                    <li style="background-color: #006e6f;"></li>
+                    <li style="background-color: #018987;"></li>
+                    <li style="background-color: #02aaad;"></li>
+                    <li style="background-color: #58c4c6;"></li>
+                    <li style="background-color: #bde5e7;"></li>
+                    <li style="background-color: #013d73;"></li>
+                    <li style="background-color: #015092;"></li>
+                    <li style="background-color: #0266b2;"></li>
+                    <li style="background-color: #5c88c5;"></li>
+                    <li style="background-color: #aec5e5;"></li>
+
+                    <li style="background-color: #081c63;"></li>
+                    <li style="background-color: #172e7c;"></li>
+                    <li style="background-color: #27459b;"></li>
+                    <li style="background-color: #5765b0;"></li>
+                    <li style="background-color: #8e94c6;"></li>
+                    <li style="background-color: #38085c;"></li>
+                    <li style="background-color: #491d76;"></li>
+                    <li style="background-color: #5c3092;"></li>
+                    <li style="background-color: #8069af;"></li>
+                    <li style="background-color: #baaed4;"></li>
+
+                    <li style="background-color: #69015a;"></li>
+                    <li style="background-color: #810d70;"></li>
+                    <li style="background-color: #a4228f;"></li>
+                    <li style="background-color: #bc7bb3;"></li>
+                    <li style="background-color: #e0cde0;"></li>
+                    <li style="background-color: #930408;"></li>
+                    <li style="background-color: #ba1118;"></li>
+                    <li style="background-color: #ed1e24;"></li>
+                    <li style="background-color: #f77871;"></li>
+                    <li style="background-color: #fbd3d1;"></li>
+                </ul>
+            </div>
+            <div class="dropdown-wrap">
+                <div class="icon toggle dropdown-toggle color-picker material-icons">border_color</div>
+                <ul class="dropdown color" id="color-border">
+                    <li style="background-color: #FFF;"></li>
+                    <li style="background-color: #EBEBEB;"></li>
+                    <li style="background-color: #D2D2D2;"></li>
+                    <li style="background-color: #BBBBBB;"></li>
+                    <li style="background-color: #9F9F9F;"></li>
+                    <li style="background-color: #868686;"></li>
+                    <li style="background-color: #6A6A6A;"></li>
+                    <li style="background-color: #4B4B4B;"></li>
+                    <li style="background-color: #292929;"></li>
+                    <li style="background-color: #000;" class="selected"></li>
+
+                    <li style="background-color: #93221e;"></li>
+                    <li style="background-color: #b92d2c;"></li>
+                    <li style="background-color: #ed403c;"></li>
+                    <li style="background-color: #f58d74;"></li>
+                    <li style="background-color: #f9d3c0;"></li>
+                    <li style="background-color: #9a4d05;"></li>
+                    <li style="background-color: #c16518;"></li>
+                    <li style="background-color: #f48221;"></li>
+                    <li style="background-color: #fca967;"></li>
+                    <li style="background-color: #fbdbc6;"></li>
+
+                    <li style="background-color: #9b6702;"></li>
+                    <li style="background-color: #c18210;"></li>
+                    <li style="background-color: #f8a51b;"></li>
+                    <li style="background-color: #fcc779;"></li>
+                    <li style="background-color: #fee6ca;"></li>
+                    <li style="background-color: #a19600;"></li>
+                    <li style="background-color: #cbbe00;"></li>
+                    <li style="background-color: #fef102;"></li>
+                    <li style="background-color: #fff685;"></li>
+                    <li style="background-color: #fffbcc;"></li>
+
+                    <li style="background-color: #3e7927;"></li>
+                    <li style="background-color: #569834;"></li>
+                    <li style="background-color: #70be44;"></li>
+                    <li style="background-color: #add68a;"></li>
+                    <li style="background-color: #e0efda;"></li>
+                    <li style="background-color: #006c3b;"></li>
+                    <li style="background-color: #01874c;"></li>
+                    <li style="background-color: #02a860;"></li>
+                    <li style="background-color: #63c094;"></li>
+                    <li style="background-color: #c3dfd0;"></li>
+
+                    <li style="background-color: #006e6f;"></li>
+                    <li style="background-color: #018987;"></li>
+                    <li style="background-color: #02aaad;"></li>
+                    <li style="background-color: #58c4c6;"></li>
+                    <li style="background-color: #bde5e7;"></li>
+                    <li style="background-color: #013d73;"></li>
+                    <li style="background-color: #015092;"></li>
+                    <li style="background-color: #0266b2;"></li>
+                    <li style="background-color: #5c88c5;"></li>
+                    <li style="background-color: #aec5e5;"></li>
+
+                    <li style="background-color: #081c63;"></li>
+                    <li style="background-color: #172e7c;"></li>
+                    <li style="background-color: #27459b;"></li>
+                    <li style="background-color: #5765b0;"></li>
+                    <li style="background-color: #8e94c6;"></li>
+                    <li style="background-color: #38085c;"></li>
+                    <li style="background-color: #491d76;"></li>
+                    <li style="background-color: #5c3092;"></li>
+                    <li style="background-color: #8069af;"></li>
+                    <li style="background-color: #baaed4;"></li>
+
+                    <li style="background-color: #69015a;"></li>
+                    <li style="background-color: #810d70;"></li>
+                    <li style="background-color: #a4228f;"></li>
+                    <li style="background-color: #bc7bb3;"></li>
+                    <li style="background-color: #e0cde0;"></li>
+                    <li style="background-color: #930408;"></li>
+                    <li style="background-color: #ba1118;"></li>
+                    <li style="background-color: #ed1e24;"></li>
+                    <li style="background-color: #f77871;"></li>
+                    <li style="background-color: #fbd3d1;"></li>
+                </ul>
+            </div>
+            <div class="dropdown-wrap">
+                <div class="toggle dropdown-toggle select-toggle">No borders</div>
+                <ul class="dropdown select" id="border-width">
+                    <li data-value="0" class="selected">No borders</li>
+                    <li data-value="1">1 px</li>
+                    <li data-value="2">2 px</li>
+                    <li data-value="3">3 px</li>
+                    <li data-value="4">4 px</li>
+                    <li data-value="5">5 px</li>
+                </ul>
+            </div>
+            <div class="icon button requires-selection disabled material-icons" id="border-top">border_top</div>
+            <div class="icon button requires-selection disabled material-icons" id="border-right">border_right</div>
+            <div class="icon button requires-selection disabled material-icons" id="border-bottom">border_bottom</div>
+            <div class="icon button requires-selection disabled material-icons" id="border-left">border_left</div>
+            <div class="icon button requires-selection disabled material-icons" id="border-horizontal">
+                border_horizontal
+            </div>
+            <div class="icon button requires-selection disabled material-icons" id="border-vertical">border_vertical
+            </div>
+            <div class="icon button requires-selection disabled material-icons" id="border-inner">border_inner</div>
+            <div class="icon button requires-selection disabled material-icons" id="border-outer">border_outer</div>
+            <div class="icon button requires-selection disabled material-icons" id="border-all">border_all</div>
+            <div class="icon button requires-selection disabled material-icons" id="border-clear">border_clear</div>
+        </div>
+    </li>
+    <li>
+        <div class="button requires-selection disabled text-button" id="copy"><i class="material-icons">content_copy</i>Copy
+        </div>
+        <div class="dropdown-wrap">
+            <div class="toggle dropdown-toggle requires-selection requires-copied-cells disabled action-select"><i
+                    class="material-icons">content_paste</i>Paste
+            </div>
+            <ul class="dropdown select" id="paste">
+                <li data-value="right">Push cells right</li>
+                <li data-value="down">Push cells down</li>
+                <li data-value="replace">Replace cells</li>
+            </ul>
+        </div>
+        <div class="button requires-selection disabled text-button" id="clear"><i class="material-icons">clear</i>Clear
+        </div>
+        <div class="dropdown-wrap">
+            <div class="toggle dropdown-toggle requires-selection disabled action-select"><i class="material-icons">publish</i>Insert
+            </div>
+            <ul class="dropdown select" id="insert">
+                <li data-value="right">Push cells right</li>
+                <li data-value="down">Push cells down</li>
+            </ul>
+        </div>
+        <div class="dropdown-wrap">
+            <div class="toggle dropdown-toggle requires-selection disabled action-select"><i class="material-icons">delete</i>Delete
+            </div>
+            <ul class="dropdown select" id="delete">
+                <li data-value="left">Shift cells left</li>
+                <li data-value="up">Shift cells up</li>
+            </ul>
+        </div>
+    </li>
+    <li>
+        <div class="controls-group">
+            <div class="icon material-icons" id="file-icon">insert_drive_file</div>
+            <div class="input-container">
+                <input type="text" spellcheck="false" autocomplete="off" id="filename" value="Untitled">
+                <div class="input-underline"></div>
+            </div>
+        </div>
+        <div class="controls-group">
+            <div class="button text-button" id="import"><i class="material-icons">file_upload</i>Import</div>
+            <div class="dropdown-wrap">
+                <div class="toggle dropdown-toggle action-select"><i class="material-icons">file_download</i>Export
+                </div>
+                <ul class="dropdown select" id="export">
+                    <li data-value="csv">.csv (Values only)</li>
+                    <li data-value="xlsx">.xlsx</li>
+                </ul>
+            </div>
+            <form id="file-form" class="hidden">
+                <input type="file" accept=".csv,.xlsx" id="file">
+            </form>
+        </div>
+    </li>
 </ul>
 <div id="main">
     <div id="container">

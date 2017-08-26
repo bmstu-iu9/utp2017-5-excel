@@ -21,10 +21,8 @@ ul, ol {
   display: block;
   list-style: none; }
 
-.clear-fix::after {
-  content: "";
-  display: block;
-  clear: both; }
+.hidden {
+  display: none; }
 
 #header {
   position: absolute;
@@ -104,11 +102,198 @@ ul, ol {
   border-radius: 3px;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.15); }
 
-#toolbar > li {
-  display: none; }
-
 #toolbar > li.active {
   display: block; }
+  #toolbar > li.active .controls-group {
+    position: relative;
+    float: left;
+    padding: 0 8px 0 9px; }
+  #toolbar > li.active .controls-group:not(:first-child)::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    height: 24px;
+    margin: auto 0;
+    border-left: 1px solid #E2E2E2; }
+  #toolbar > li.active .icon {
+    display: block;
+    float: left;
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+    white-space: nowrap;
+    text-align: center;
+    margin: 5px 3px;
+    border-radius: 4px;
+    font-size: 20px;
+    color: rgba(0, 0, 0, 0.56); }
+  #toolbar > li.active .toggle, #toolbar > li.active .switch, #toolbar > li.active .button {
+    cursor: pointer; }
+  #toolbar > li.active .toggle:not(.disabled):not(.active) {
+    transition: background 0.135s ease; }
+  #toolbar > li.active .toggle:not(.disabled):not(.active):hover {
+    background: rgba(0, 0, 0, 0.05); }
+  #toolbar > li.active .switch:not(.disabled):not(.active) {
+    transition: background 0.135s ease; }
+  #toolbar > li.active .switch:not(.disabled):not(.active):hover {
+    background: rgba(0, 0, 0, 0.05); }
+  #toolbar > li.active .button:not(.disabled) {
+    transition: background 0.135s ease; }
+  #toolbar > li.active .button:not(.disabled):hover {
+    background: rgba(0, 0, 0, 0.05); }
+  #toolbar > li.active .button:not(.disabled):active {
+    transition: background 0s;
+    background: rgba(0, 0, 0, 0.09); }
+  #toolbar > li.active .toggle.active, #toolbar > li.active .switch.active {
+    background: #C8C8C8; }
+  #toolbar > li.active .toggle.disabled, #toolbar > li.active .switch.disabled, #toolbar > li.active .button.disabled {
+    color: rgba(0, 0, 0, 0.33);
+    cursor: default; }
+  #toolbar > li.active .dropdown-toggle {
+    float: none;
+    position: relative;
+    padding-right: 12px; }
+  #toolbar > li.active .dropdown-toggle::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 0;
+    height: 0;
+    margin: auto 4px;
+    border: 4px solid transparent;
+    border-top: 5px solid rgba(0, 0, 0, 0.5);
+    border-bottom-width: 0;
+    pointer-events: none; }
+  #toolbar > li.active .dropdown-toggle.disabled::after {
+    border-top-color: rgba(0, 0, 0, 0.25); }
+  #toolbar > li.active .dropdown-wrap {
+    position: relative;
+    float: left; }
+  #toolbar > li.active .dropdown {
+    position: absolute;
+    top: 38px;
+    left: 8px;
+    z-index: 65536;
+    background: #FFF;
+    border-radius: 3px;
+    box-shadow: 0 1px 3px 1px rgba(0, 0, 0, 0.16);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.135s ease; }
+  #toolbar > li.active .dropdown-toggle.icon + .dropdown {
+    left: 3px; }
+  #toolbar > li.active .dropdown-toggle.active + .dropdown {
+    opacity: 1;
+    pointer-events: auto; }
+  #toolbar > li.active .select-toggle {
+    margin: 8px;
+    padding: 0 18px 0 3px;
+    border-bottom: 1px dotted rgba(0, 0, 0, 0.4);
+    border-radius: 3px 3px 0 0;
+    font-size: 0.82em;
+    line-height: 24px; }
+  #toolbar > li.active .select-toggle.disabled {
+    border-bottom-color: rgba(0, 0, 0, 0.2);
+    color: rgba(0, 0, 0, 0.5); }
+  #toolbar > li.active .select-toggle.ambiguous {
+    color: transparent; }
+  #toolbar > li.active .select li {
+    display: block;
+    min-width: 50px;
+    padding: 6px 12px;
+    font-size: 0.9em;
+    color: #424242;
+    white-space: nowrap;
+    cursor: pointer; }
+  #toolbar > li.active .select li {
+    transition: background 0.135s ease; }
+  #toolbar > li.active .select li:hover {
+    background: rgba(0, 0, 0, 0.05); }
+  #toolbar > li.active .select li:active {
+    transition: background 0s;
+    background: rgba(0, 0, 0, 0.09); }
+  #toolbar > li.active .color {
+    padding: 10px;
+    width: 220px; }
+  #toolbar > li.active .color > li {
+    display: block;
+    float: left;
+    margin: 2px;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    outline: 1px solid #FFF;
+    transition: outline-color 0.135s ease; }
+  #toolbar > li.active .color > li:hover {
+    outline-color: #333; }
+  #toolbar > li.active .input-container {
+    position: relative;
+    float: left;
+    margin: 6px 8px 6px 0; }
+    #toolbar > li.active .input-container input {
+      display: block;
+      width: 100%;
+      height: 28px;
+      line-height: 28px;
+      padding: 0 2px;
+      box-sizing: border-box;
+      border-bottom: 1px solid #BFBFBF;
+      background: none;
+      border-radius: 0;
+      font-family: inherit;
+      font-size: 0.9em;
+      color: #222;
+      transition: border-bottom-color 0.135s ease; }
+    #toolbar > li.active .input-container input:focus {
+      border-bottom-color: transparent; }
+    #toolbar > li.active .input-container input:focus ~ .input-underline {
+      transform: scale(1, 1); }
+    #toolbar > li.active .input-container .input-underline {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 2;
+      height: 2px;
+      background: rgba(15, 157, 88, 0.75);
+      transform: scale(0, 1);
+      transition: transform 0.135s ease; }
+  #toolbar > li.active #file-icon {
+    color: #ABABAB; }
+  #toolbar > li.active #filename {
+    width: 200px; }
+  #toolbar > li.active .action-select {
+    margin: 6px 8px;
+    padding: 0 18px 0 3px;
+    border-radius: 3px;
+    font-size: 0.82em;
+    line-height: 28px; }
+  #toolbar > li.active .text-button {
+    float: left;
+    margin: 6px 8px;
+    padding: 0 6px 0 4px;
+    border-radius: 3px;
+    font-size: 0.82em;
+    line-height: 28px; }
+  #toolbar > li.active .text-button i, #toolbar > li.active .action-select i {
+    display: block;
+    float: left;
+    margin-right: 5px;
+    font-size: 19px;
+    line-height: 28px;
+    color: #777;
+    pointer-events: none; }
+  #toolbar > li.active .action-select.disabled, #toolbar > li.active .text-button.disabled {
+    color: rgba(0, 0, 0, 0.5); }
+  #toolbar > li.active .action-select.disabled i, #toolbar > li.active .text-button.disabled i {
+    color: rgba(0, 0, 0, 0.33); }
+
+#toolbar > li {
+  display: none; }
 
 #formula {
   font-family: Cousine, Consolas, monospace;
@@ -174,6 +359,7 @@ ul, ol {
     height: 22px; }
   #table td {
     border: 1px solid #D9D9D9;
+    padding: 0 2px;
     box-sizing: border-box;
     font-size: 14px;
     color: #1F1F1F;
@@ -206,17 +392,13 @@ ul, ol {
     height: 6px;
     cursor: ns-resize; }
   #table td.selected {
-    background-color: #ECF3FF; }
+    box-shadow: inset 0 0 0 999px rgba(66, 133, 244, 0.11); }
   #table td.selected-first {
-    background-color: #FFF; }
-  #table td.selection-border-top {
-    border-top: 2px solid #4285F4 !important; }
+    box-shadow: none; }
   #table td.selection-border-right {
     border-right: 2px solid #4285F4 !important; }
   #table td.selection-border-bottom {
     border-bottom: 2px solid #4285F4 !important; }
-  #table td.selection-border-left {
-    border-left: 2px solid #4285F4 !important; }
   #table td.error {
     background-image: url(../assets/images/error.png);
     background-size: 24px 24px;
