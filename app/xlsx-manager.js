@@ -57,9 +57,9 @@ const XLSXManager = class {
          * @private
          */
         _generate(type) {
-            let zip = new JSZip();
-            let sheet = new XLSXManager._Sheet();
-            let sharedStrings = new XLSXManager._SharedStrings();
+            const zip = new JSZip();
+            const sheet = new XLSXManager._Sheet();
+            const sharedStrings = new XLSXManager._SharedStrings();
             sheet.fillData(this._cells);
 
             zip.folder("_rels").file(".rels", XLSXManager._Samples.RELS);
@@ -81,14 +81,19 @@ const XLSXManager = class {
          */
         fill(blob) {
             JSZip.loadAsync(blob).then((zip) => {
-                let cells = zip.files["xl/worksheets/sheet1.xml"].async("string").then((data) => { // The cell data is here
+                const cells = zip.files["xl/worksheets/sheet1.xml"].async("string").then((data) => { // The cell data is here
                     return (new DOMParser()).parseFromString(data, "text/xml")
                         .getElementsByTagName("sheetData")[0].childNodes;
                 });
-                let strings = zip.file("xl/sharedStrings.xml").async("string").then((str) => { // Strings are stored here
+                const strings = zip.file("xl/sharedStrings.xml").async("string").then((str) => { // Strings are stored here
                     return (new DOMParser()).parseFromString(str, "text/xml")
-                        .getElementsByTagName("t")
+                        .getElementsByTagName("t");
                 });
+
+                const styles = new XLSXManager.Styles(zip.file("xl/styles.xml").async("string").then((str) => { // Strings are stored here
+                    return (new DOMParser()).parseFromString(str, "text/xml");
+                    //.getElementsByTagName("")
+                }));
 
                 Promise.all([cells, strings]).then((args) => {
                     const arr = args[0];
@@ -102,21 +107,21 @@ const XLSXManager = class {
                             colCount = cs.length;
                         } // REQUIRE WIDTH -> automatically
                         Array.from(cs).forEach(obj => {
-                            let addr = this._getIndexes(obj.getAttribute("r"));
+                            let {row, column} = XLSXManager._getIndices(obj.getAttribute("r"));
                             switch (obj.getAttribute("t")) {
                                 case "s": {
                                     if (obj.getElementsByTagName("v")[0]) {
-                                        this._spreadsheet.setFormula(addr.row, addr.column, `"${strings[obj.getElementsByTagName("v")[0].textContent]}"`); // No char escape here !!! TODO
+                                        this._spreadsheet.setFormula(row, column, JSON.stringify(strings[obj.getElementsByTagName("v")[0].textContent]));
                                     }
                                     break;
                                 }
                                 default: {
                                     if (obj.getElementsByTagName("f")[0]) {
                                         //console.log("formula:", obj.getElementsByTagName("f")[0].textContent);
-                                        this._spreadsheet.setFormula(addr.row, addr.column, obj.getElementsByTagName("f")[0].textContent);
+                                        this._spreadsheet.setFormula(row, column, obj.getElementsByTagName("f")[0].textContent);
                                     } else if (obj.getElementsByTagName("v")[0]) {
                                         //console.log("textContent:", obj.getElementsByTagName("v")[0].textContent);
-                                        this._spreadsheet.setFormula(addr.row, addr.column, obj.getElementsByTagName("v")[0].textContent);
+                                        this._spreadsheet.setFormula(row, column, obj.getElementsByTagName("v")[0].textContent);
                                     } else
                                         console.error("Unknown object", obj);
                                 }
@@ -133,15 +138,15 @@ const XLSXManager = class {
          * @returns {{row: number, column: number}}
          * @private
          */
-        _getIndexes(address) { // No validation checks!
+        static _getIndices(address) { // No validation checks!
             let i = 0;
             while (!/^\d+$/.test(address[i]) && i < address.length) {
                 i++;
             }
-            let column = XLSXManager._numberize(address.substring(0, i));
-            let row = parseInt(address.substring(i));
+            const column = XLSXManager._numberize(address.substring(0, i)) - 1;
+            const row = parseInt(address.substring(i)) - 1;
 
-            return {row: row - 1, column: column - 1};
+            return {row, column};
         }
 
         /**
@@ -224,6 +229,18 @@ XLSXManager._SharedStrings = class {
         this.counter = 0;
     }
 };
+
+/**
+ * Class is responsible for styles (fonts, size, color, etc...)
+ * @type {XLSXManager.Styles}
+ */
+XLSXManager.Styles = class {
+    constructor(data) {
+        this._data = data;
+    }
+};
+
+
 /**
  * Generates the representation of the sheet1.xml (file in xl/worksheets directory)
  * @type {XLSXManager._Sheet}
