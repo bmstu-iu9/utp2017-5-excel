@@ -409,6 +409,7 @@ $blocks-spacing: 15px;
         color: #1F1F1F;
         font-weight: 400;
         white-space: nowrap;
+        cursor: cell;
     }
     td.column-header, td.row-header {
         position: relative;
@@ -417,6 +418,7 @@ $blocks-spacing: 15px;
         font-weight: 600;
         color: #424242;
         text-align: center;
+        cursor: pointer;
     }
     td.row-header {
         width: 70px;
@@ -431,14 +433,12 @@ $blocks-spacing: 15px;
         top: 0; bottom: 0;
         right: -3px;
         width: 6px;
-        cursor: ew-resize;
     }
     .dragger-horizontal {
         position: absolute;
         right: 0; left: 0;
         bottom: -3px;
         height: 6px;
-        cursor: ns-resize;
     }
 
     $selection-border-style: 2px solid #4285F4;
@@ -466,6 +466,12 @@ $blocks-spacing: 15px;
         content: "ERROR";
     }
 
+}
+.not-dragged .dragger-vertical:hover {
+    cursor: col-resize;
+}
+.not-dragged .dragger-horizontal:hover {
+    cursor: row-resize;
 }
 #hidden {
     position: fixed;
