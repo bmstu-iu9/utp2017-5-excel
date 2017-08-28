@@ -1557,12 +1557,13 @@ Spreadsheet._CellGraph = class {
                to._parent.push(v);
             });
         });
-        this.dfs(vertex, callback);
+        this.dfs(vertex, vertex, callback);
         this.vertices.forEach(v => {
             v._color = 0;
             v._parent = [];
         });
     }
+
 
     /**
      * Browses all the vertices and calls callback() from every vertex
@@ -1570,14 +1571,20 @@ Spreadsheet._CellGraph = class {
      * @param {function} callback
      * @method
      */
-    dfs(current, callback) {
+    dfs(startVertex, current, callback) {
         current._color = 1;
         callback(current);
-        current.edges.forEach(to => {
-            if (to._color === 0 || to._hasWhiteParent) {
-                this.dfs(to, callback);
+        for (let i = 0; i < current.edges.length; i++) {
+            let to = current.edges[i];
+            if (to._color === 0) {
+                let flag = true;
+                for (let i = 0; i < to._parent.length; i++) {
+                    let parent = to._parent[i];
+                    if (to.hasStartAsParent(parent, startVertex) && parent._color === 0) flag = false;
+                }
+                if (flag) this.dfs(startVertex, to, callback);
             }
-        });
+        }
         current._hasWhiteParent = false;
         current._parent.forEach(parent => {
             if (parent._color === 0) current._hasWhiteParent = true;
@@ -1626,6 +1633,16 @@ Spreadsheet._CellGraph.Vertex = class {
          * @type {boolean}
          */
         this._hasWhiteParent = false;
+    }
+
+    hasStartAsParent(current, start) {
+        if (parent === start) return true;
+        for (let i = 0; i < current._parent.length; i++) {
+            let parent = current._parent[i];
+            if (parent === start) return true;
+            if (this.hasStartAsParent(parent, start)) return true;
+        }
+        return false;
     }
 
     /**
