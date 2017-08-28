@@ -161,6 +161,14 @@ const ui = {
                     ui._moveFormulaInputCaretToEnd();
                 }
             });
+            // Open formula input on double click
+            document.addEventListener("dblclick", event => {
+                if (event.target.matches("td:not(.column-header):not(.row-header)")) {
+                    document.getElementById("nav-formula").click();
+                    formulaInput.focus();
+                    ui._moveFormulaInputCaretToEnd();
+                }
+            });
             const applyFormula = () => {
                 if (!cellEdited) return;
                 ui._setCellText(cellEdited, "");
