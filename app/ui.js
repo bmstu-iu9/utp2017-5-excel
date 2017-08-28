@@ -32,12 +32,14 @@ const ui = {
             var promise = manager.generateB64();
             promise.then(b64 => {
                 localStorage.setItem("savedSheet", b64);
+                localStorage.setItem("savedName", document.getElementById("filename").value);
             }).catch(error => console.log(error));
         });
 
         addEventListener("load", () => {
             const sheet = localStorage.getItem("savedSheet");
-            if (sheet) {
+            const name = localStorage.getItem("savedName");
+            if (sheet && name) {
                 const spreadsheet = new Spreadsheet();
                 ui.clearTable();
                 ui.attach(spreadsheet);
@@ -51,7 +53,17 @@ const ui = {
                 manager.setSpreadsheet(spreadsheet);
                 manager.fill(blob);
                 localStorage.removeItem("savedSheet");
+                document.getElementById("filename").value = name;
+                localStorage.removeItem("savedName");
             }
+        });
+
+        //Making a new spreadsheet
+        document.getElementById("new").addEventListener("click", () => {
+            document.getElementById("filename").value = "Untitled";
+            const spreadsheet = new Spreadsheet();
+            ui.clearTable();
+            ui.attach(spreadsheet);
         });
 
         { // Making cells resizable
