@@ -25,6 +25,35 @@ const ui = {
 
         ui.displayTable();
 
+        //Saving content on unload, restoring on load
+        addEventListener("beforeunload", function() {
+            const manager = new XLSXManager();
+            manager.setSpreadsheet(ui.spreadsheet);
+            var promise = manager.generateB64();
+            promise.then(b64 => {
+                localStorage.setItem("savedSheet", b64);
+            }).catch(error => console.log(error));
+        });
+
+        addEventListener("load", function() {
+            const sheet = localStorage.getItem("savedSheet");
+            if (sheet) {
+                const spreadsheet = new Spreadsheet();
+                ui.clearTable();
+                ui.attach(spreadsheet);
+                var string = atob(sheet);
+                var array = new Uint8Array(new ArrayBuffer(string.length));
+                for (var i = 0; i < string.length; i++) {
+                    array[i] = string.charCodeAt(i);
+                }
+                var blob = new Blob([array], {type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+                const manager = new XLSXManager();
+                manager.setSpreadsheet(spreadsheet);
+                manager.fill(blob);
+                localStorage.removeItem("savedSheet");
+            }
+        });
+
         { // Making cells resizable
             const dragGuideVertical = document.getElementById("drag-guide-vertical");
             const dragGuideHorizontal = document.getElementById("drag-guide-horizontal");
