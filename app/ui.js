@@ -26,7 +26,7 @@ const ui = {
         ui.displayTable();
 
         //Saving content on unload, restoring on load
-        addEventListener("beforeunload", function() {
+        addEventListener("beforeunload", () => {
             const manager = new XLSXManager();
             manager.setSpreadsheet(ui.spreadsheet);
             var promise = manager.generateB64();
@@ -35,7 +35,7 @@ const ui = {
             }).catch(error => console.log(error));
         });
 
-        addEventListener("load", function() {
+        addEventListener("load", () => {
             const sheet = localStorage.getItem("savedSheet");
             if (sheet) {
                 const spreadsheet = new Spreadsheet();
@@ -523,10 +523,18 @@ const ui = {
 
         this.spreadsheet = spreadsheet;
 
+        document.addEventListener("animationend", event => {
+            if (event.target.matches("td")) {
+                event.target.classList.remove("just-updated");
+            }
+        });
+
         spreadsheet.addEventListener(Spreadsheet.Event.CELL_VALUE_UPDATED, (row, column, value) => {
             let text = "";
             let error = "";
             const location = new ui.CellLocation(row, column);
+            const cell = ui._getCellByLocation(location);
+            cell.classList.add("just-updated");
             switch (typeof value) {
                 case "string":
                 case "number":

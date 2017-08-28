@@ -9,6 +9,11 @@ $color-theme: #0F9D58;
     user-select: $value;
 }
 
+@keyframes flash {
+    0% {box-shadow: inset 0px 0px 0px 999px rgba(255,231,92,0.5);}
+    100% {box-shadow: none}
+}
+
 * {
     border: none;
     outline: none;
@@ -439,6 +444,10 @@ $blocks-spacing: 15px;
         right: 0; left: 0;
         bottom: -3px;
         height: 6px;
+    }
+
+    td.just-updated {
+        animation: flash 2s;
     }
 
     $selection-border-style: 2px solid #4285F4;
