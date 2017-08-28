@@ -1514,8 +1514,8 @@ Spreadsheet._CellGraph = class {
     findCycleFrom(vertex) {
         vertex.ifCyclic(vertex);
         this.vertices.forEach(v => {
-            v._color = 0;
-            v._parent = [];
+            v.color = 0;
+            v.parents = [];
         });
         if (vertex.cycle.length === 0) return null;
         let ret = vertex.cycle;
@@ -1554,13 +1554,13 @@ Spreadsheet._CellGraph = class {
     iterateFrom(vertex, callback) {
         this.vertices.forEach(v => {
             v.edges.forEach(to => {
-               to._parent.push(v);
+               to.parents.push(v);
             });
         });
         this.dfs(vertex, vertex, callback);
         this.vertices.forEach(v => {
-            v._color = 0;
-            v._parent = [];
+            v.color = 0;
+            v.parents = [];
         });
     }
 
@@ -1573,14 +1573,14 @@ Spreadsheet._CellGraph = class {
      * @method
      */
     dfs(startVertex, current, callback) {
-        current._color = 1;
+        current.color = 1;
         callback(current);
         current.edges.forEach(to => 
-            to._color === 0 &&
-            !to._parent.some(parent => to.hasStartAsParent(parent, startVertex) && parent._color === 0) &&
+            to.color === 0 &&
+            !to.parents.some(parent => to.hasStartAsParent(parent, startVertex) && parent.color === 0) &&
             this.dfs(startVertex, to, callback));
-        current._hasWhiteParent = current._parent.some(parent => parent._color === 0);
-        current._color = 2;
+        //current._hasWhiteParent = current._parent.some(parent => parent._color === 0);
+        current.color = 2;
     }
 };
 
@@ -1605,30 +1605,22 @@ Spreadsheet._CellGraph.Vertex = class {
          */
         this.edges = [];
         /**
-         * @private
          * @type {int} color, used in ifCyclic
          */
-        this._color = 0;
+        this.color = 0;
         /**
-         * @private
          * @type {Spreadsheet._CellGraph.Vertex[]};
          */
-        this._parent = [];
+        this.parents = [];
         /**
          * @type {Spreadsheet._CellGraph.Vertex[]}
          */
         this.cycle = [];
-
-        /**
-         * @private
-         * @type {boolean}
-         */
-        this._hasWhiteParent = false;
     }
 
     hasStartAsParent(current, start) {
-        if (parent === start) return true;
-        for (let parent of current._parent) {
+        if (current === start) return true;
+        for (let parent of current.parents) {
             if (parent === start) return true;
             if (this.hasStartAsParent(parent, start)) return true;
         }
@@ -1642,18 +1634,18 @@ Spreadsheet._CellGraph.Vertex = class {
      */
     ifCyclic(current)  {
 
-        current._color = 1;
+        current.color = 1;
         current.edges.forEach(to => {
-            if (to._color === 0) {
-                to._parent.push(current);
+            if (to.color === 0) {
+                to.parents.push(current);
                 this.ifCyclic(to);
             }
             else if (to === this) {
-                this._parent.push(current);
+                this.parents.push(current);
                 this.addAll();
             }
         });
-        current._color = 2;
+        current.color = 2;
     }
 
     /**
@@ -1661,10 +1653,10 @@ Spreadsheet._CellGraph.Vertex = class {
      * @method
      */
     addAll() {
-        let current = this._parent[this._parent.length - 1];
+        let current = this.parents[this.parents.length - 1];
         while (current !== this) {
             if (this.cycle.indexOf(current) === -1) this.cycle.push(current);
-            current = current._parent[current._parent.length - 1];
+            current = current.parents[current.parents.length - 1];
         }
         if (this.cycle.indexOf(this) === -1) this.cycle.push(this);
     }
