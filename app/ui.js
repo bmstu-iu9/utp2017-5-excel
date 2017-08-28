@@ -532,9 +532,6 @@ const ui = {
         spreadsheet.addEventListener(Spreadsheet.Event.CELL_VALUE_UPDATED, (row, column, value) => {
             let text = "";
             let error = "";
-            const location = new ui.CellLocation(row, column);
-            const cell = ui._getCellByLocation(location);
-            cell.classList.add("just-updated");
             switch (typeof value) {
                 case "string":
                 case "number":
@@ -547,6 +544,11 @@ const ui = {
                     break;
                 default:
                     error = "Calculated value is not printable";
+            }
+            const location = new ui.CellLocation(row, column);
+            const cell = ui._getCellByLocation(location);
+            if(!cell.classList.contains("selected-first") && text.length && cell.textContent !== text) {
+                cell.classList.add("just-updated");
             }
             ui._setCellText(location, text);
             ui._setError(location, error);
