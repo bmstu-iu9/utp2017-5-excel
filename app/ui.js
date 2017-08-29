@@ -29,7 +29,7 @@ const ui = {
         addEventListener("beforeunload", () => {
             const manager = new XLSXManager();
             manager.setSpreadsheet(ui.spreadsheet);
-            var promise = manager.generateB64();
+            const promise = manager.generateB64();
             promise.then(b64 => {
                 localStorage.setItem("savedSheet", b64);
                 localStorage.setItem("savedName", document.getElementById("filename").value);
@@ -43,12 +43,12 @@ const ui = {
                 const spreadsheet = new Spreadsheet();
                 ui.clearTable();
                 ui.attach(spreadsheet);
-                var string = atob(sheet);
-                var array = new Uint8Array(new ArrayBuffer(string.length));
-                for (var i = 0; i < string.length; i++) {
+                const string = atob(sheet);
+                let array = new Uint8Array(new ArrayBuffer(string.length));
+                for (let i = 0; i < string.length; i++) {
                     array[i] = string.charCodeAt(i);
                 }
-                var blob = new Blob([array], {type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+                const blob = new Blob([array], {type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
                 const manager = new XLSXManager();
                 manager.setSpreadsheet(spreadsheet);
                 manager.fill(blob);
@@ -64,6 +64,28 @@ const ui = {
             const spreadsheet = new Spreadsheet();
             ui.clearTable();
             ui.attach(spreadsheet);
+        });
+
+        // Adding color palettes
+        {
+            const template = document.getElementById("color-palette-template").childNodes;
+            const palettes = document.getElementsByClassName("color-palette");
+            for (let j = 0; j < 141; j++) {
+                for (let i = 0; i < palettes.length; i++) {
+                    let clone = template[j].cloneNode(true);
+                    palettes[i].appendChild(clone);
+                }
+            }
+            const child = document.getElementById("color-palette-template");
+            child.parentNode.removeChild(child);
+        }
+
+        // Removing red highlight
+        document.getElementById("formula").addEventListener("input", () => {
+            formulaInput = document.getElementById("formula");
+            let str = document.createTextNode(document.getElementById("errorSpan").textContent);
+            formulaInput.insertBefore(str, formulaInput.lastChild);
+            formulaInput.removeChild(document.getElementById("errorSpan"));
         });
 
         { // Making cells resizable
@@ -583,8 +605,23 @@ const ui = {
             }
         });
 
-        spreadsheet.addEventListener(Spreadsheet.Event.CELL_FORMULA_ERROR, (row, column, error) =>
-            ui._setError(new ui.CellLocation(row, column), error.toString()));
+        spreadsheet.addEventListener(Spreadsheet.Event.CELL_FORMULA_ERROR, (row, column, error) => {
+            ui._setError(new ui.CellLocation(row, column), error.toString());
+            let s = document.createElement("span");
+            let formulaInput = document.getElementById("formula");
+            let formulaText = formulaInput.textContent.trim();
+            let left = document.createTextNode(formulaText.substring(0, error.position));
+            let str = document.createTextNode(formulaText.substring(error.position + 1, 1));
+            let right = document.createTextNode(formulaText.substring(error.position + 1, error.toString().length - error.position + 1));
+            formulaInput.textContent = '';
+            s.style.background = "rgb(255,0,0)";
+            s.id = "errorSpan";
+            s.appendChild(str);
+            formulaInput.appendChild(left);
+            formulaInput.appendChild(s);
+            formulaInput.appendChild(right);
+            ui._moveFormulaInputCaretToEnd();
+        });
 
         spreadsheet.addEventListener(Spreadsheet.Event.CELL_CIRCULAR_DEPENDENCY_DETECTED, (row, column) =>
             ui._setError(new ui.CellLocation(row, column), "Circular dependency detected"));
