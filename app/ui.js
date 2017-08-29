@@ -253,36 +253,67 @@ const ui = {
                 formulaInput.textContent = formulaInput.textContent.replace(/\xa0/g, " ");
                 ui._moveFormulaInputCaretToEnd();
             }, 1));
-            // Moving selection with Tab and Shift+Tab
-            document.addEventListener("keydown", event => {
-                if (event.code === "Tab" && ui.selection.exists) {
-                    const direction = event.shiftKey ? -1 : 1;
-                    const location = new ui.CellLocation(ui.selection.start.row, ui.selection.start.column + direction);
-                    const cell = ui._getCellByLocation(location);
-                    if (location.column >= 0 && cell) {
-                        const mouse = document.createEvent("MouseEvents");
-                        mouse.initEvent("mousedown", true, true);
-                        cell.dispatchEvent(mouse);
-                        mouse.initEvent("mouseup", true, true);
-                        cell.dispatchEvent(mouse);
-                    }
-                    if (document.activeElement === formulaInput) formulaInput.blur();
-                    event.preventDefault();
-                }
-            });
-            document.addEventListener("animationend", event => {
-                if (event.target.matches("td")) {
-                    event.target.classList.remove("just-updated");
-                }
-            });
             // Removing error highlight on input
-            document.getElementById("formula").addEventListener("input", () => {
-                const errorHighlight = document.querySelector("#formula span");
+            formulaInput.addEventListener("input", () => {
+                const errorHighlight = formulaInput.querySelector("span");
                 if (errorHighlight) {
                     errorHighlight.parentElement.insertBefore(errorHighlight.childNodes[0], errorHighlight);
                     errorHighlight.remove();
                 }
             });
+            // Moving selection with Tab and arrow keys
+            document.addEventListener("keydown", event => {
+                if (!ui.selection.exists()) return;
+                let start = null;
+                let end = null;
+                let direction;
+                const shiftHorizontally = location => new ui.CellLocation(location.row,
+                    Math.max(0, Math.min(location.column + direction, ui.getTableWidth() - 1)));
+                const shiftVertically = location => new ui.CellLocation(
+                    Math.max(0, Math.min(location.row + direction, ui.getTableHeight() - 1)), location.column);
+                switch (event.code) {
+                    case "Tab":
+                        direction = event.shiftKey ? -1 : 1;
+                        start = end = shiftHorizontally(ui.selection.start);
+                        break;
+                    case "ArrowLeft":
+                    case "ArrowRight":
+                    case "ArrowUp":
+                    case "ArrowDown":
+                        if (event.target === formulaInput) return;
+                        direction = event.code === "ArrowLeft" || event.code === "ArrowUp" ? -1 : 1;
+                        const shift = event.code === "ArrowLeft" || event.code === "ArrowRight" ?
+                            shiftHorizontally : shiftVertically;
+                        if (event.shiftKey) {
+                            start = ui.selection.start;
+                            end = shift(ui.selection.end);
+                        }
+                        else if (event.ctrlKey) {
+                            start = shift(ui.selection.start);
+                            end = shift(ui.selection.end);
+                        }
+                        else start = end = shift(ui.selection.start);
+                        break;
+                    case "Delete":
+                        if (event.target === formulaInput) return;
+                        document.getElementById("clear").click();
+                        return;
+                    default:
+                        return;
+                }
+                const mouse = document.createEvent("MouseEvents");
+                mouse.initEvent("mousedown", true, true);
+                ui._getCellByLocation(start).dispatchEvent(mouse);
+                const endCell = ui._getCellByLocation(end);
+                mouse.initEvent("mouseover", true, true);
+                endCell.dispatchEvent(mouse);
+                mouse.initEvent("mouseup", true, true);
+                endCell.dispatchEvent(mouse);
+                if (document.activeElement === formulaInput) formulaInput.blur();
+                event.preventDefault();
+            });
+            document.addEventListener("animationend", event =>
+                event.target.classList.contains("just-updated") && event.target.classList.remove("just-updated"));
         }
 
         { // Defining logic of custom input elements
@@ -891,7 +922,7 @@ const ui = {
             fontSizeSelect.previousElementSibling.classList.add("ambiguous");
         } else {
             fontSizeSelect.previousElementSibling.classList.remove("ambiguous");
-            fontSizeSelect.previousElementSibling.textContent = fontSize;
+            fontSizeSelect.previousElementSibling.textContent = fontSize.replace("pt", " pt");
         }
 
         document.getElementById("bold").classList[
