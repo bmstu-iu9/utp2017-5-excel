@@ -374,6 +374,9 @@ $blocks-spacing: 15px;
     margin: 0;
     max-width: 0;
 }
+#errorSpan {
+    background-color: rgba(255, 0, 0, 0.5);
+}
 
 #main {
     position: absolute;

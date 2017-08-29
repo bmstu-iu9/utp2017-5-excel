@@ -68,22 +68,22 @@ const ui = {
 
         // Adding color palettes
         {
-            const template = document.getElementById("color-palette-template").childNodes;
-            const palettes = document.getElementsByClassName("color-palette");
-            for (let j = 0; j < 141; j++) {
-                for (let i = 0; i < palettes.length; i++) {
-                    let clone = template[j].cloneNode(true);
-                    palettes[i].appendChild(clone);
-                }
-            }
+            const template = Array.from(document.getElementById("color-palette-template").children);
+            const palettes = Array.from(document.getElementsByClassName("color-palette"));
+            template.forEach((color) => {
+                const clone = color.cloneNode(true);
+                palettes.forEach((palette) => {
+                    palette.appendChild(clone);
+                });
+            });
             const child = document.getElementById("color-palette-template");
-            child.parentNode.removeChild(child);
+            child.parentElement.removeChild(child);
         }
 
-        // Removing red highlight
+        // Removing red highlight on input
         document.getElementById("formula").addEventListener("input", () => {
             formulaInput = document.getElementById("formula");
-            let str = document.createTextNode(document.getElementById("errorSpan").textContent);
+            const str = document.createTextNode(document.getElementById("errorSpan").textContent);
             formulaInput.insertBefore(str, formulaInput.lastChild);
             formulaInput.removeChild(document.getElementById("errorSpan"));
         });
@@ -607,16 +607,15 @@ const ui = {
 
         spreadsheet.addEventListener(Spreadsheet.Event.CELL_FORMULA_ERROR, (row, column, error) => {
             ui._setError(new ui.CellLocation(row, column), error.toString());
-            let s = document.createElement("span");
-            let formulaInput = document.getElementById("formula");
-            let formulaText = formulaInput.textContent.trim();
-            let left = document.createTextNode(formulaText.substring(0, error.position));
-            let str = document.createTextNode(formulaText.substring(error.position + 1, 1));
-            let right = document.createTextNode(formulaText.substring(error.position + 1, error.toString().length - error.position + 1));
+            const s = document.createElement("span");
+            const formulaInput = document.getElementById("formula");
+            const formulaText = formulaInput.textContent.trim();
+            const left = document.createTextNode(formulaText.substring(0, error.position));
+            const str = formulaText.substring(error.position + 1, 1);
+            const right = document.createTextNode(formulaText.substring(error.position + 1, error.toString().length - error.position + 1));
             formulaInput.textContent = '';
-            s.style.background = "rgb(255,0,0)";
             s.id = "errorSpan";
-            s.appendChild(str);
+            s.textContent = str;
             formulaInput.appendChild(left);
             formulaInput.appendChild(s);
             formulaInput.appendChild(right);
