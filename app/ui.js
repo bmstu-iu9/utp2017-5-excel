@@ -25,7 +25,7 @@ const ui = {
 
         ui.displayTable();
 
-        //Saving content on unload, restoring on load
+        // Saving content on unload, restoring on load
         addEventListener("beforeunload", () => {
             const manager = new XLSXManager();
             manager.setSpreadsheet(ui.spreadsheet);
@@ -44,7 +44,7 @@ const ui = {
                 ui.clearTable();
                 ui.attach(spreadsheet);
                 const string = atob(sheet);
-                let array = new Uint8Array(new ArrayBuffer(string.length));
+                const array = new Uint8Array(new ArrayBuffer(string.length));
                 for (let i = 0; i < string.length; i++) {
                     array[i] = string.charCodeAt(i);
                 }
@@ -58,35 +58,11 @@ const ui = {
             }
         });
 
-        //Making a new spreadsheet
-        document.getElementById("new").addEventListener("click", () => {
-            document.getElementById("filename").value = "Untitled";
-            const spreadsheet = new Spreadsheet();
-            ui.clearTable();
-            ui.attach(spreadsheet);
-        });
-
-        // Adding color palettes
-        {
-            const template = Array.from(document.getElementById("color-palette-template").children);
-            const palettes = Array.from(document.getElementsByClassName("color-palette"));
-            template.forEach((color) => {
-                const clone = color.cloneNode(true);
-                palettes.forEach((palette) => {
-                    palette.appendChild(clone);
-                });
-            });
-            const child = document.getElementById("color-palette-template");
-            child.parentElement.removeChild(child);
-        }
-
-        // Removing red highlight on input
-        document.getElementById("formula").addEventListener("input", () => {
-            formulaInput = document.getElementById("formula");
-            const str = document.createTextNode(document.getElementById("errorSpan").textContent);
-            formulaInput.insertBefore(str, formulaInput.lastChild);
-            formulaInput.removeChild(document.getElementById("errorSpan"));
-        });
+        // Displaying color palettes
+        document.querySelectorAll(".color-palette").forEach(palette =>
+            Array.from(document.getElementById("color-palette-template").children).forEach(color =>
+                palette.appendChild(color.cloneNode(false))));
+        document.getElementById("color-palette-template").remove();
 
         { // Making cells resizable
             const dragGuideVertical = document.getElementById("drag-guide-vertical");
@@ -151,9 +127,13 @@ const ui = {
             const getColumnOf = cell => Array.from(cell.parentElement.children).indexOf(cell) - 1;
             const displayFormula = location => {
                 const formula = ui.spreadsheet.getFormula(location.row, location.column);
-                setTimeout(() => formulaInput.textContent = formula && "=" + formula, 1);
-                const error = event.target.getAttribute("data-error");
-                formulaError.textContent = error || "";
+                const cell = ui._getCellByLocation(location);
+                setTimeout(() => {
+                    formulaInput.textContent = formula && "=" + formula;
+                    const error = cell.getAttribute("data-error");
+                    const position = cell.getAttribute("data-errorposition");
+                    ui._setError(location, error || "", position && +position);
+                }, 1);
             };
             document.addEventListener("mousedown", event => {
                 let setSelection = null;
@@ -246,7 +226,7 @@ const ui = {
                     ui.spreadsheet.setFormula(cellEdited.row, cellEdited.column, formulaText);
                 } catch (error) {
                     if (error instanceof Spreadsheet.FormulaError) {
-                        ui._setError(new ui.CellLocation(cellEdited.row, cellEdited.column), error.toString());
+                        ui._setError(new ui.CellLocation(cellEdited.row, cellEdited.column), error.toString(), error.position);
                     } else console.log(error);
                 }
                 if (cellEdited === ui.selection.start && cellEdited !== ui.selection.end) {
@@ -293,6 +273,14 @@ const ui = {
             document.addEventListener("animationend", event => {
                 if (event.target.matches("td")) {
                     event.target.classList.remove("just-updated");
+                }
+            });
+            // Removing error highlight on input
+            document.getElementById("formula").addEventListener("input", () => {
+                const errorHighlight = document.querySelector("#formula span");
+                if (errorHighlight) {
+                    errorHighlight.parentElement.insertBefore(errorHighlight.childNodes[0], errorHighlight);
+                    errorHighlight.remove();
                 }
             });
         }
@@ -559,6 +547,12 @@ const ui = {
                     document.body.removeChild(a);
                 }).catch(error => console.log(error));
             });
+            document.getElementById("new").addEventListener("click", () => {
+                document.getElementById("filename").value = "Untitled";
+                const spreadsheet = new Spreadsheet();
+                ui.clearTable();
+                ui.attach(spreadsheet);
+            });
         }
 
     },
@@ -606,20 +600,7 @@ const ui = {
         });
 
         spreadsheet.addEventListener(Spreadsheet.Event.CELL_FORMULA_ERROR, (row, column, error) => {
-            ui._setError(new ui.CellLocation(row, column), error.toString());
-            const s = document.createElement("span");
-            const formulaInput = document.getElementById("formula");
-            const formulaText = formulaInput.textContent.trim();
-            const left = document.createTextNode(formulaText.substring(0, error.position));
-            const str = formulaText.substring(error.position + 1, 1);
-            const right = document.createTextNode(formulaText.substring(error.position + 1, error.toString().length - error.position + 1));
-            formulaInput.textContent = '';
-            s.id = "errorSpan";
-            s.textContent = str;
-            formulaInput.appendChild(left);
-            formulaInput.appendChild(s);
-            formulaInput.appendChild(right);
-            ui._moveFormulaInputCaretToEnd();
+            ui._setError(new ui.CellLocation(row, column), error.toString(), error.position);
         });
 
         spreadsheet.addEventListener(Spreadsheet.Event.CELL_CIRCULAR_DEPENDENCY_DETECTED, (row, column) =>
@@ -832,11 +813,25 @@ const ui = {
      * Sets that cell contains an error and stores its description
      * @param {ui.CellLocation} location
      * @param {string} text
+     * @param {int|undefined} position
      * @private
      */
-    _setError(location, text) {
+    _setError(location, text, position = undefined) {
         if (ui.selection.exists() && location.row === ui.selection.start.row && location.column === ui.selection.start.column) {
             document.getElementById("formula-error").textContent = text;
+            if(text && position != null) {
+                const formulaInput = document.getElementById("formula");
+                const formulaText = formulaInput.textContent;
+                if (position + 1 < formulaText.length) {
+                    formulaInput.textContent = "";
+                    formulaInput.appendChild(document.createTextNode(formulaText.substring(0, position)));
+                    const errorHighlight = document.createElement("span");
+                    errorHighlight.textContent = formulaText.substr(position, 1);
+                    formulaInput.appendChild(errorHighlight);
+                    formulaInput.appendChild(document.createTextNode(formulaText.substr(position + 1)));
+                    ui._moveFormulaInputCaretToEnd();
+                }
+            }
         }
         const cell = ui._getCellByLocation(location);
         if (text) {
@@ -846,6 +841,8 @@ const ui = {
         }
         else cell.classList.remove("error");
         cell.setAttribute("data-error", text);
+        if (position != null) cell.setAttribute("data-errorposition", position.toString());
+        else cell.removeAttribute("data-errorposition");
     },
 
     /**

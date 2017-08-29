@@ -349,6 +349,10 @@ $blocks-spacing: 15px;
     overflow: hidden;
     white-space: nowrap;
     transition: border-bottom-color 0.135s ease;
+    span {
+        background: rgba(211, 61, 44, 0.2);
+        border-radius: 2px;
+    }
 }
 #formula[contenteditable="true"] {
     border-bottom-color: #CCC;
@@ -373,9 +377,6 @@ $blocks-spacing: 15px;
 #formula-error:empty {
     margin: 0;
     max-width: 0;
-}
-#errorSpan {
-    background-color: rgba(255, 0, 0, 0.5);
 }
 
 #main {
