@@ -148,11 +148,11 @@ const ui = {
                 }
                 else if (event.target.matches(".column-header")) {
                     const startLocation = new ui.CellLocation(0, getColumnOf(event.target));
-                    ui.selection.set(startLocation, new ui.CellLocation(ui.tableHeight() - 1, startLocation.column));
+                    ui.selection.set(startLocation, new ui.CellLocation(ui.getTableHeight() - 1, startLocation.column));
                     displayFormula(startLocation);
                     setSelection = event => {
                         if (event.target.matches(".column-header")) {
-                            const endLocation = new ui.CellLocation(ui.tableHeight() - 1, getColumnOf(event.target));
+                            const endLocation = new ui.CellLocation(ui.getTableHeight() - 1, getColumnOf(event.target));
                             ui.selection.set(startLocation, endLocation);
                         }
                     };
@@ -160,15 +160,15 @@ const ui = {
                 else if (event.target.matches(".row-header")) {
                     if (event.target.parentElement.matches(":first-child")) {
                         ui.selection.set(new ui.CellLocation(0, 0),
-                            new ui.CellLocation(ui.tableHeight() - 1, ui.tableWidth() - 1));
+                            new ui.CellLocation(ui.getTableHeight() - 1, ui.getTableWidth() - 1));
                         return;
                     }
                     const startLocation = new ui.CellLocation(getRowOf(event.target), 0);
-                    ui.selection.set(startLocation, new ui.CellLocation(startLocation.row, ui.tableWidth() - 1));
+                    ui.selection.set(startLocation, new ui.CellLocation(startLocation.row, ui.getTableWidth() - 1));
                     displayFormula(startLocation);
                     setSelection = event => {
                         if (event.target.matches(".row-header") && !event.target.parentElement.matches(":first-child")) {
-                            const endLocation = new ui.CellLocation(getRowOf(event.target), ui.tableWidth() - 1);
+                            const endLocation = new ui.CellLocation(getRowOf(event.target), ui.getTableWidth() - 1);
                             ui.selection.set(startLocation, endLocation);
                         }
                     };
@@ -421,6 +421,8 @@ const ui = {
         }
 
         { // Cell actions
+            const resizeHorizontally = (deltaWidth) => ui.setTableWidth(ui.getTableWidth() + deltaWidth);
+            const resizeVertically = (deltaHeight) => ui.setTableHeight(ui.getTableHeight() + deltaHeight);
             document.getElementById("copy").addEventListener("click", event => {
                 if (event.target.classList.contains("disabled")) return;
                 ui.buffer = ui.spreadsheet.bufferize(
@@ -431,13 +433,15 @@ const ui = {
                 let buffer;
                 switch (event.detail.value) {
                     case "right":
+                        resizeHorizontally(ui.buffer.width());
                         buffer = ui.spreadsheet.bufferize(ui.selection.start.row, ui.selection.start.column,
-                            ui.selection.start.row + ui.buffer.height() - 1, ui.tableWidth() - 1);
+                            ui.selection.start.row + ui.buffer.height() - 1, ui.getTableWidth() - 1);
                         ui.spreadsheet.paste(buffer, ui.selection.start.row, ui.selection.start.column + ui.buffer.width());
                         break;
                     case "down":
+                        resizeVertically(ui.buffer.height());
                         buffer = ui.spreadsheet.bufferize(ui.selection.start.row, ui.selection.start.column,
-                            ui.tableHeight() - 1, ui.selection.start.column + ui.buffer.width() - 1);
+                            ui.getTableHeight() - 1, ui.selection.start.column + ui.buffer.width() - 1);
                         ui.spreadsheet.paste(buffer, ui.selection.start.row + ui.buffer.height(), ui.selection.start.column);
                         break;
                 }
@@ -451,13 +455,15 @@ const ui = {
                 let buffer;
                 switch (event.detail.value) {
                     case "right":
+                        resizeHorizontally(ui.selection.width());
                         buffer = ui.spreadsheet.bufferize(ui.selection.topLeftRow(), ui.selection.topLeftColumn(),
-                            ui.selection.topLeftRow() + ui.selection.height() - 1, ui.tableWidth() - 1);
+                            ui.selection.topLeftRow() + ui.selection.height() - 1, ui.getTableWidth() - 1);
                         ui.spreadsheet.paste(buffer, ui.selection.topLeftRow(), ui.selection.topLeftColumn() + ui.selection.width());
                         break;
                     case "down":
+                        resizeVertically(ui.selection.height());
                         buffer = ui.spreadsheet.bufferize(ui.selection.topLeftRow(), ui.selection.topLeftColumn(),
-                            ui.tableHeight() - 1, ui.selection.topLeftColumn() + ui.selection.width() - 1);
+                            ui.getTableHeight() - 1, ui.selection.topLeftColumn() + ui.selection.width() - 1);
                         ui.spreadsheet.paste(buffer, ui.selection.topLeftRow() + ui.selection.height(), ui.selection.topLeftColumn());
                         break;
                 }
@@ -468,15 +474,18 @@ const ui = {
                 switch (event.detail.value) {
                     case "left":
                         buffer = ui.spreadsheet.bufferize(ui.selection.topLeftRow(), ui.selection.topLeftColumn() + ui.selection.width(),
-                            ui.selection.topLeftRow() + ui.selection.height() - 1, ui.tableWidth() - 1);
+                            ui.selection.topLeftRow() + ui.selection.height() - 1, ui.getTableWidth() - 1);
                         ui.spreadsheet.paste(buffer, ui.selection.topLeftRow(), ui.selection.topLeftColumn());
+                        if (ui.selection.height() === ui.getTableHeight()) resizeHorizontally(-ui.selection.width());
                         break;
                     case "up":
                         buffer = ui.spreadsheet.bufferize(ui.selection.topLeftRow() + ui.selection.height(), ui.selection.topLeftColumn(),
-                            ui.tableHeight() - 1, ui.selection.topLeftRow() + ui.selection.width() - 1);
+                            ui.getTableHeight() - 1, ui.selection.topLeftRow() + ui.selection.width() - 1);
                         ui.spreadsheet.paste(buffer, ui.selection.topLeftRow(), ui.selection.topLeftColumn());
+                        if (ui.selection.width() === ui.getTableWidth()) resizeVertically(-ui.selection.height());
                         break;
                 }
+                ui.selection.fitToTable();
             });
         }
 
@@ -556,6 +565,8 @@ const ui = {
                 default:
                     error = "Calculated value is not printable";
             }
+            if (row >= ui.getTableHeight()) ui.setTableHeight(row + 1);
+            if (column >= ui.getTableWidth()) ui.setTableWidth(column + 1);
             const location = new ui.CellLocation(row, column);
             const cell = ui._getCellByLocation(location);
             if(!cell.classList.contains("selected-first") && text.length && cell.textContent !== text) {
@@ -674,18 +685,52 @@ const ui = {
 
     /**
      * Gets table width
-     * @returns {number}
+     * @returns {int}
      */
-    tableWidth() {
-        return document.querySelector("#table tr").children.length - 1;
+    getTableWidth() {
+        return document.getElementById("table").children[0].children.length - 1;
     },
 
     /**
      * Gets table height
-     * @returns {Number}
+     * @returns {int}
      */
-    tableHeight() {
-        return document.querySelectorAll("#table tr").length - 1;
+    getTableHeight() {
+        return document.getElementById("table").children.length - 1;
+    },
+
+    /**
+     * Sets table width
+     * @param {int} width
+     */
+    setTableWidth(width) {
+        const currentWidth = this.getTableWidth();
+        if (width < currentWidth) document.querySelectorAll("#table tr").forEach(row => {
+            const cells = row.children;
+            for (let j = currentWidth; j >= width + 1; j--) cells[j].remove();
+        });
+        else if (width > currentWidth) document.querySelectorAll("#table tr").forEach((row, i) => {
+            for (let j = currentWidth + 1; j <= width; j++) {
+                if (!i) row.appendChild(ui._createColumnHeader(j));
+                else row.appendChild(document.createElement("td"));
+            }
+        })
+    },
+
+    /**
+     * Sets table height
+     * @param {int} height
+     */
+    setTableHeight(height) {
+        const currentHeight = this.getTableHeight();
+        if (height < currentHeight) {
+            const rows = document.getElementById("table").children;
+            for (let i = currentHeight; i >= height + 1; i--) rows[i].remove();
+        }
+        else if (height > currentHeight) {
+            const table = document.getElementById("table");
+            for (let i = currentHeight + 1; i <= height; i++) table.appendChild(ui._createRow(i));
+        }
     },
 
     /**
@@ -830,6 +875,12 @@ const ui = {
                 ui.selection.everyCell(cell => cell.style.textAlign === value) ? "add" : "remove"
             ]("active"));
 
+        document.getElementById("delete").previousElementSibling.classList[
+            !ui.selection.exists() ||
+                ui.selection.width() === ui.getTableWidth() && ui.selection.height() === ui.getTableHeight() ?
+                "add" : "remove"
+            ]("disabled");
+
     },
 
     /**
@@ -962,6 +1013,24 @@ const ui = {
             this.forEachCell((...args) => flag = flag && !!callback(...args));
             return flag;
 
+        },
+
+        /**
+         * If selection boundaries are outside of the table, fixes them
+         */
+        fitToTable() {
+            const tableWidth = ui.getTableWidth();
+            const tableHeight = ui.getTableHeight();
+            ui.selection.set(
+                new ui.CellLocation(
+                    Math.min(ui.selection.start.row, tableHeight - 1),
+                    Math.min(ui.selection.start.column, tableWidth - 1)
+                ),
+                new ui.CellLocation(
+                    Math.min(ui.selection.end.row, tableHeight - 1),
+                    Math.min(ui.selection.end.column, tableWidth - 1)
+                )
+            );
         }
 
     },
