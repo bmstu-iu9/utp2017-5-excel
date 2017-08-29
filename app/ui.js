@@ -268,6 +268,11 @@ const ui = {
                     event.preventDefault();
                 }
             });
+            document.addEventListener("animationend", event => {
+                if (event.target.matches("td")) {
+                    event.target.classList.remove("just-updated");
+                }
+            });
         }
 
         { // Defining logic of custom input elements
@@ -534,12 +539,6 @@ const ui = {
     attach(spreadsheet) {
 
         this.spreadsheet = spreadsheet;
-
-        document.addEventListener("animationend", event => {
-            if (event.target.matches("td")) {
-                event.target.classList.remove("just-updated");
-            }
-        });
 
         spreadsheet.addEventListener(Spreadsheet.Event.CELL_VALUE_UPDATED, (row, column, value) => {
             let text = "";
