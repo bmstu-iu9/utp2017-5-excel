@@ -1165,7 +1165,7 @@ Spreadsheet._Parser = class {
      */
     expect(tag) {
         if(!this.token.matches(tag)) {
-            throw new Spreadsheet.FormulaError(`Unexpected ${tag}`, this.token.start.index+1);
+            throw new Spreadsheet.FormulaError(`Unexpected ${this.token.tag}`, this.token.start.index+1);
         }
         this.token = this.token.next();
     }
