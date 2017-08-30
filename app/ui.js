@@ -677,14 +677,15 @@ const ui = {
 
     /**
      * Creates a row
-     * @param index
+     * @param {int} index
+     * @param {int} width
      * @returns {Element}
      * @private
      */
-    _createRow(index) {
+    _createRow(index, width = ui.getTableWidth()) {
 
         const row = document.createElement("tr");
-        for (let j = 0; j <= ui.DEFAULT_COLUMNS; j++) {
+        for (let j = 0; j <= width; j++) {
             const cell = document.createElement("td");
             if (!j) {
                 cell.textContent = index;
@@ -716,7 +717,7 @@ const ui = {
             }
             headingRow.appendChild(cell);
         }
-        for (let i = 1; i <= ui.DEFAULT_ROWS; i++) table.appendChild(ui._createRow(i));
+        for (let i = 1; i <= ui.DEFAULT_ROWS; i++) table.appendChild(ui._createRow(i, ui.DEFAULT_COLUMNS));
     },
 
     /**
