@@ -60,13 +60,14 @@ const XLSXManager = class {
             const zip = new JSZip();
             const sheet = new XLSXManager._Sheet();
             const sharedStrings = new XLSXManager._SharedStrings();
+            const stylesManager = new XLSXManager.Styles();
             sheet.fillData(this._cells);
 
             zip.folder("_rels").file(".rels", XLSXManager._Samples.RELS);
             zip.folder("xl").folder("worksheets").file("sheet1.xml", sheet.toString());
             zip.folder("xl/worksheets/_rels").file("sheet1.xml.rels", XLSXManager._Samples.SHEET_RELS);
             zip.folder("xl/_rels").file("workbook.xml.rels", XLSXManager._Samples.WORKBOOK_RELS);
-            zip.file("xl/styles.xml", XLSXManager._Samples.STYLES);
+            zip.file("xl/styles.xml", stylesManager.generate());
             zip.file("xl/sharedStrings.xml", sharedStrings.toString());
             zip.file("xl/workbook.xml", XLSXManager._Samples.WORKBOOK);
             zip.folder("xl/drawings").file("drawing1.xml", XLSXManager._Samples.DRAWING);
@@ -83,11 +84,18 @@ const XLSXManager = class {
         }
 
     /**
-     * Fills the cells of the spreadsheet with the base64 string given
-     * @param {string} base64str base64 string of the *.xlsx file
+     * Sets the b64str, that loads through the fillB64() call
+     * @param b64str - base64 string of the *.xlsx file
      */
-    fillB64(base64str) {
-        this._fill(base64str, {base64: true});
+    import(b64str) {
+        this._b64str = b64str;
+    }
+
+    /**
+     * Fills the cells of the spreadsheet with the imported base64 string
+     */
+    fillB64() {
+        this._fill(this._b64str, {base64: true});
     }
 
     /**
@@ -261,12 +269,39 @@ XLSXManager.FormattedCell = class {
         }
     }
 
+    /**
+     * Extracts font data into XLSXManager.Styles.Font object
+     * @returns {XLSXManager.Styles.Font}
+     */
     getFont() {
         let font = new XLSXManager.Styles.Font();
         font.color = this._color;
         font.name = this._fontFamily;
         font.size = this._fontSize;
+        font.isBold = this._bold;
+        font.isItalic = this._italic;
         return font;
+    }
+
+    /**
+     * Generates xml "border" field
+     * @returns {Element} xml documentElement
+     */
+    getBorder() {
+        let doc = document.implementation.createDocument(null, "border");
+        if (this.borderLeft) {
+            doc.documentElement.appendChild(this.borderLeft.xml());
+        }
+        if (this.borderRight) {
+            doc.documentElement.appendChild(this.borderRight.xml());
+        }
+        if (this.borderTop) {
+            doc.documentElement.appendChild(this.borderTop.xml());
+        }
+        if (this.borderBottom) {
+            doc.documentElement.appendChild(this.borderBottom.xml());
+        }
+        return doc.documentElement;
     }
 
     // = = = STYLE PROPERTIES HERE = = = //
@@ -293,7 +328,16 @@ XLSXManager.FormattedCell = class {
         return this._color;
     }
 
-    set color(value) { // Check color type?
+    /**
+     * @example
+     * color("FF0000")
+     * color("AAFFBB")
+     * @param value hex color string, without # sign
+     */
+    set color(value) {
+        if (!value.match(/([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})/)) {
+            throw new Error("Only hex values of color supported!");
+        }
         this._color = value;
     }
 
@@ -337,7 +381,14 @@ XLSXManager.FormattedCell = class {
         return this._fillColor;
     }
 
+    /**
+     * See example in {@link #color(value)} method
+     * @param value hex color string without #
+     */
     set fillColor(value) {
+        if (!value.match(/([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})/)) {
+            throw new Error("Only hex values of fill color supported!");
+        }
         this._fillColor = value;
     }
 
@@ -386,11 +437,40 @@ XLSXManager.FormattedCell = class {
     }
 };
 
+/**
+ * Holds the xml representation of the borders of the cell
+ * @type {XLSXManager.FormattedCell.Border}
+ */
 XLSXManager.FormattedCell.Border = class /*extends Spreadsheet._Cell*/ {
+    /**
+     * Border properties
+     */
     constructor() {
         this._position = undefined;
         this._width = undefined;
         this._color = undefined;
+    }
+
+    static _genXMLTag(pos, style, color) {
+        let doc = document.implementation.createDocument(null, pos);
+        const a = doc.createAttribute("style");
+        a.value = style; // "thick" | "medium"
+        doc.documentElement.setAttributeNode(a);
+        const c = doc.createElement("color");
+        c.setAttribute("rgb", color);
+        doc.documentElement.appendChild(c);
+        return doc.documentElement;
+    }
+
+    xml() {
+        let style = "thin";
+        if (this._width > 2) {
+            style = "medium";
+        } else if (this._width > 1) {
+            style = "thick";
+        }
+
+        return Border._genXMLTag(this._position, style, this._color);
     }
 
     get position() {
@@ -416,6 +496,9 @@ XLSXManager.FormattedCell.Border = class /*extends Spreadsheet._Cell*/ {
     }
 
     set color(value) {
+        if (!value.match(/([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})/)) {
+            throw new Error("Only hex values of color supported!");
+        }
         this._color = value;
     }
 };
@@ -474,49 +557,170 @@ XLSXManager._SharedStrings = class {
  * @type {XLSXManager.Styles}
  */
 XLSXManager.Styles = class {
+
     constructor() {
         this.fonts = [];
         this.fills = [];
-        this.boreders = [];
+        this.borders = [];
+        this.metaHead = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' + String.fromCharCode(13) +
+            '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">';
+        this.metaTail = '<borders count="1"><border><left/><right/><top/><bottom/></border></borders><cellStyleXfs count="1"><xf borderId="0" fillId="0" fontId="0" numFmtId="0" applyAlignment="1" applyFont="1"/></cellStyleXfs><cellXfs count="2"><xf borderId="0" fillId="0" fontId="0" numFmtId="0" xfId="0" applyAlignment="1" applyFont="1"><alignment/></xf><xf borderId="0" fillId="0" fontId="1" numFmtId="0" xfId="0" applyAlignment="1" applyFont="1"><alignment/></xf></cellXfs><cellStyles count="1"><cellStyle xfId="0" name="Normal" builtinId="0"/></cellStyles><dxfs count="0"/></styleSheet>';
+
+        // FOR TEST PURPOSES, LET'S ASSUME THE GIVEN CELL HAS THE PROPERTIES BELOW: //
+        const style = new XLSXManager.FormattedCell();
+        style.fontSize = 20;
+        //style.italic = true;
+        //style.fontFamily = "Courier";
+        style.bold = true;
+        style.color = "FF0000";
+        this.addStyle(style);
+        // END TEST //
     }
 
-    addStyle(formattedCell) { // TODO check type
-        formattedCell.getFont();
+    /**
+     * The method checks if the array contains the value
+     * @param arr array
+     * @param elem value
+     * @returns {boolean} true, if array contains the value. Otherwise - false
+     * @private
+     */
+    static _contains(arr, elem) {
+        for (let i = 0; i < arr.length; i++) {
+            if (arr[i].equals(elem)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
+    /**
+     * The method generates fonts data in xml format
+     * @returns {string} xml string
+     * @private
+     */
+    _fontsGen() {
+        let doc = document.implementation.createDocument(null, "fonts");
+        const a = doc.createAttribute("count");
+        a.value = this.fonts.length;
+        doc.documentElement.setAttributeNode(a);
+        this.fonts.forEach(font => doc.documentElement.appendChild(font.xml()));
+        return new XMLSerializer().serializeToString(doc.documentElement);
+    }
+
+    /**
+     * Generates xml list with the given name, compatible with *.xlsx format
+     * @param name the header of the list
+     * @param elements array of the elements
+     * @returns {string} xml string
+     * @private
+     */
+    _genList(name, elements) {
+        let doc = document.implementation.createDocument(null, name);
+        const a = doc.createAttribute("count");
+        a.value = elements.length;
+        doc.documentElement.setAttributeNode(a);
+        elements.forEach(elem => doc.documentElement.appendChild(elem));
+        return new XMLSerializer().serializeToString(doc.documentElement);
+    }
+
+    /**
+     * Generates style data by the given formattedCell
+     * @param {XLSXManager.FormattedCell} formattedCell
+     */
+    addStyle(formattedCell) {
+        if (!formattedCell instanceof XLSXManager.FormattedCell) {
+            throw new Error("Incompatible types! XLSXManager.FormattedCell expected!")
+        }
+        const font = formattedCell.getFont();
+        if (!XLSXManager.Styles._contains(this.fonts, font)) {
+            this.fonts.push(font);
+        }
+        const border = formattedCell.getBorder();
+        if (!XLSXManager.Styles._contains(this.borders, border)) {
+            this.borders.push(border);
+        }
+    }
+
+    generate() {
+        return this.metaHead +
+            this._genList("fonts", this.fonts.map(elem => elem.xml())) +
+            '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="lightGray"/></fill></fills>' +
+            this._genList("borders", this.borders) +
+            this.metaTail;
     }
 };
+
+/**
+ * The class is responsible for encoding fonts in xml *.xlsx notation
+ * @type {XLSXManager.Styles.Font}
+ */
 XLSXManager.Styles.Font = class {
+    /**
+     * Font properties
+     */
     constructor() {
         this.size = undefined;
         this.color = undefined;
         this.name = undefined;
-        this._hash = undefined;
+        this.isItalic = false;
+        this.isBold = false;
     }
 
-    toString() {
+    /**
+     * The method generates XML representation of font data for styles.xml
+     * @returns {Element} xml documentElement
+     */
+    xml() {
         let doc = document.implementation.createDocument(null, "font");
-        const font = doc.createElement("font");
         if (this.size) {
             const sz = doc.createElement("sz");
             sz.setAttribute("val", this.size.toString());
-            font.appendChild(sz);
+            doc.documentElement.appendChild(sz);
         }
         if (this.color) {
             const cl = doc.createElement("color");
             cl.setAttribute("rgb", this.color);
-            font.appendChild(cl);
+            doc.documentElement.appendChild(cl);
         }
         if (this.name) {
             const fn = doc.createElement("name");
             fn.setAttribute("val", this.name);
-            font.appendChild(fn);
+            doc.documentElement.appendChild(fn);
         }
-        doc.documentElement.appendChild(font);
-        return new XMLSerializer().serializeToString(doc.documentElement);
+        if (this.isBold) {
+            doc.documentElement.appendChild(doc.createElement("b"));
+        }
+        if (this.isItalic) {
+            doc.documentElement.appendChild(doc.createElement("i"));
+        }
+        return doc.documentElement;
     }
 
-    hash() {
+    /**
+     * The method generates XML representation of font data for styles.xml as string
+     * @returns {string} XML font data
+     */
+    toString() {
+        return new XMLSerializer().serializeToString(xml());
+    }
 
+    /**
+     * Compare fonts by their properties
+     * @param {XLSXManager.Styles.Font} font font to compare to
+     * @returns {boolean} true for same fonts, false otherwise
+     */
+    equals(font) {
+        if (font instanceof XLSXManager.Styles.Font) {
+            throw new Error("Incompatible types! XLSXManager.Styles.Font expected!");
+        }
+        const properties = Object.keys(this);
+        console.log(properties);
+        for (let i = 0; i < properties.length; i++) {
+            if (this[properties[i]] !== font[properties[i]]) {
+                return false;
+            }
+        }
+        return true;
     }
 };
 
