@@ -74,13 +74,36 @@ const XLSXManager = class {
             return zip.generateAsync({type: type});
         }
 
-
         /**
-         * Loads the content to the attached spreadsheet
+         * Sets the blob, that loads through the fill() call
          * @param blob - *.xlsx file blob
          */
-        fill(blob) {
-            JSZip.loadAsync(blob).then((zip) => {
+        import(blob) {
+            this._blob = blob;
+        }
+
+    /**
+     * Fills the cells of the spreadsheet with the base64 string given
+     * @param {string} base64str base64 string of the *.xlsx file
+     */
+    fillB64(base64str) {
+        this._fill(base64str, {base64: true});
+    }
+
+    /**
+     * Fills the cells of the spreadsheet with the data, given from import(blob) function
+     */
+    fill() {
+        if (!this._blob) {
+            console.error("blob is undefined! Remember calling import(blob)");
+            return;
+        }
+        this._fill(this._blob);
+    }
+
+    _fill(obj, opt = undefined) {
+        //const data = this._blob;
+        JSZip.loadAsync(obj, opt).then((zip) => {
                 const cells = zip.files["xl/worksheets/sheet1.xml"].async("string").then((data) => { // The cell data is here
                     return (new DOMParser()).parseFromString(data, "text/xml")
                         .getElementsByTagName("sheetData")[0].childNodes;
@@ -118,12 +141,21 @@ const XLSXManager = class {
                                 default: {
                                     if (obj.getElementsByTagName("f")[0]) {
                                         //console.log("formula:", obj.getElementsByTagName("f")[0].textContent);
-                                        this._spreadsheet.setFormula(row, column, obj.getElementsByTagName("f")[0].textContent);
+                                        try {
+                                            this._spreadsheet.setFormula(row, column, obj.getElementsByTagName("f")[0].textContent);
+                                        }
+                                        catch (error) {
+                                            console.error("The setFormula method shouldn't have thrown an error:\n" + error); // Shouldn't be
+                                        }
                                     } else if (obj.getElementsByTagName("v")[0]) {
                                         //console.log("textContent:", obj.getElementsByTagName("v")[0].textContent);
-                                        this._spreadsheet.setFormula(row, column, obj.getElementsByTagName("v")[0].textContent);
-                                    } else
-                                        console.error("Unknown object", obj);
+                                        try {
+                                            this._spreadsheet.setFormula(row, column, obj.getElementsByTagName("v")[0].textContent);
+                                        }
+                                        catch (error) {
+                                            console.error("The setFormula method shouldn't have thrown an error:\n" + error); // Shouldn't be
+                                        }
+                                    } // else - ignore empty object
                                 }
                             }
                         });
@@ -152,7 +184,6 @@ const XLSXManager = class {
         /**
          * Get the base64 encoding of the *.xlsx file
          * @returns {string} base64 string of the binary *.xlsx file
-         * @deprecated
          */
         generateB64() {
             return this._generate("base64");
@@ -180,6 +211,214 @@ const XLSXManager = class {
         }
     }
 ;
+
+/**
+ *
+ * @type {XLSXManager.FormattedCell}
+ */
+XLSXManager.FormattedCell = class {
+    /**
+     * Properties of the XLSXManager.FormattedCell
+     */
+    constructor() {
+        this._fontFamily = undefined;
+        this._fontSize = undefined;
+        this._color = undefined;
+        this._bold = undefined;
+        this._italic = undefined;
+        this._underlined = undefined;
+        this._textAlign = undefined;
+        this._fillColor = undefined;
+        this._borderLeft = undefined;
+        this._borderTop = undefined;
+        this._borderRight = undefined;
+        this._borderBottom = undefined;
+    }
+
+    /**
+     * Sets all the properties to undefined
+     */
+    reset() {
+        this.constructor();
+    }
+
+    /**
+     * Checks if the value is the typeOf type. Otherwise, throws exception.
+     * @param value the given value
+     * @param type expected type
+     * @param legValues array of legitimate values
+     */
+    static check(value, type, legValues = undefined) {
+        if (!(typeof value === type)) {
+            throw new Error(`Incompatible types ${typeof  value} and ${type}!`);
+        }
+        if (legValues && Object.prototype.toString.call(legValues) === '[object Array]') {
+            if (legValues.indexOf(value) < 0) {
+                throw new Error(`Legitimate value${legValues.length > 1 ? "s" : ""}: ${legValues.join(" | ")}`);
+            }
+        } else if (legValues !== undefined) {
+            console.error("Invalid XLSXManager.FormattedCell.check(...) usage");
+        }
+    }
+
+    getFont() {
+        let font = new XLSXManager.Styles.Font();
+        font.color = this._color;
+        font.name = this._fontFamily;
+        font.size = this._fontSize;
+        return font;
+    }
+
+    // = = = STYLE PROPERTIES HERE = = = //
+
+    get fontFamily() {
+        return this._fontFamily;
+    }
+
+    set fontFamily(value) {
+        XLSXManager.FormattedCell.check(value, "string");
+        this._fontFamily = value;
+    }
+
+    get fontSize() {
+        return this._fontSize;
+    }
+
+    set fontSize(value) {
+        XLSXManager.FormattedCell.check(value, "number");
+        this._fontSize = value;
+    }
+
+    get color() {
+        return this._color;
+    }
+
+    set color(value) { // Check color type?
+        this._color = value;
+    }
+
+    get bold() {
+        return this._bold;
+    }
+
+    set bold(value) {
+        XLSXManager.FormattedCell.check(value, "boolean");
+        this._bold = value;
+    }
+
+    get italic() {
+        return this._italic;
+    }
+
+    set italic(value) {
+        XLSXManager.FormattedCell.check(value, "boolean");
+        this._italic = value;
+    }
+
+    get underlined() {
+        return this._underlined;
+    }
+
+    set underlined(value) {
+        XLSXManager.FormattedCell.check(value, "boolean");
+        this._underlined = value;
+    }
+
+    get textAlign() {
+        return this._textAlign;
+    }
+
+    set textAlign(value) {
+        XLSXManager.FormattedCell.check(value, "string", ["left", "right", "center", "justify"]);
+        this._textAlign = value;
+    }
+
+    get fillColor() {
+        return this._fillColor;
+    }
+
+    set fillColor(value) {
+        this._fillColor = value;
+    }
+
+    get borderLeft() {
+        return this._borderLeft;
+    }
+
+    set borderLeft(value) {
+        if (!(value instanceof XLSXManager.FormattedCell.Border)) {
+            throw new Error("Incompatible type! XLSXManager.FormattedCell.Border object expected!");
+        }
+        this._borderLeft = value;
+    }
+
+    get borderTop() {
+        return this._borderTop;
+    }
+
+    set borderTop(value) {
+        if (!(value instanceof XLSXManager.FormattedCell.Border)) {
+            throw new Error("Incompatible type! XLSXManager.FormattedCell.Border object expected!");
+        }
+        this._borderTop = value;
+    }
+
+    get borderRight() {
+        return this._borderRight;
+    }
+
+    set borderRight(value) {
+        if (!(value instanceof XLSXManager.FormattedCell.Border)) {
+            throw new Error("Incompatible type! XLSXManager.FormattedCell.Border object expected!");
+        }
+        this._borderRight = value;
+    }
+
+    get borderBottom() {
+        return this._borderBottom;
+    }
+
+    set borderBottom(value) {
+        if (!(value instanceof XLSXManager.FormattedCell.Border)) {
+            throw new Error("Incompatible type! XLSXManager.FormattedCell.Border object expected!");
+        }
+        this._borderBottom = value;
+    }
+};
+
+XLSXManager.FormattedCell.Border = class /*extends Spreadsheet._Cell*/ {
+    constructor() {
+        this._position = undefined;
+        this._width = undefined;
+        this._color = undefined;
+    }
+
+    get position() {
+        return this._position;
+    }
+
+    set position(value) {
+        XLSXManager.FormattedCell.check(value, "string", ["top", "left", "right", "bottom"]);
+        this._position = value;
+    }
+
+    get width() {
+        return this._width;
+    }
+
+    set width(value) {
+        XLSXManager.FormattedCell.check(value, "number");
+        this._width = value;
+    }
+
+    get color() {
+        return this._color;
+    }
+
+    set color(value) {
+        this._color = value;
+    }
+};
 
 /**
  * Generates the representation of the sharedStrings.xml file
@@ -235,8 +474,49 @@ XLSXManager._SharedStrings = class {
  * @type {XLSXManager.Styles}
  */
 XLSXManager.Styles = class {
-    constructor(data) {
-        this._data = data;
+    constructor() {
+        this.fonts = [];
+        this.fills = [];
+        this.boreders = [];
+    }
+
+    addStyle(formattedCell) { // TODO check type
+        formattedCell.getFont();
+
+    }
+};
+XLSXManager.Styles.Font = class {
+    constructor() {
+        this.size = undefined;
+        this.color = undefined;
+        this.name = undefined;
+        this._hash = undefined;
+    }
+
+    toString() {
+        let doc = document.implementation.createDocument(null, "font");
+        const font = doc.createElement("font");
+        if (this.size) {
+            const sz = doc.createElement("sz");
+            sz.setAttribute("val", this.size.toString());
+            font.appendChild(sz);
+        }
+        if (this.color) {
+            const cl = doc.createElement("color");
+            cl.setAttribute("rgb", this.color);
+            font.appendChild(cl);
+        }
+        if (this.name) {
+            const fn = doc.createElement("name");
+            fn.setAttribute("val", this.name);
+            font.appendChild(fn);
+        }
+        doc.documentElement.appendChild(font);
+        return new XMLSerializer().serializeToString(doc.documentElement);
+    }
+
+    hash() {
+
     }
 };
 
