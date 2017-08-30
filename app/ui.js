@@ -204,7 +204,7 @@ const ui = {
                     ui._moveFormulaInputCaretToEnd();
                 }
             });
-            // Open formula input on double click
+            // Opening formula input on double click
             document.addEventListener("dblclick", event => {
                 if (event.target.matches("td:not(.column-header):not(.row-header)")) {
                     document.getElementById("nav-formula").click();
@@ -222,13 +222,7 @@ const ui = {
                         formulaText = JSON.stringify(formulaText);
                     }
                 } else formulaText = formulaText.substring(1);
-                try {
-                    ui.spreadsheet.setFormula(cellEdited.row, cellEdited.column, formulaText);
-                } catch (error) {
-                    if (error instanceof Spreadsheet.FormulaError) {
-                        ui._setError(new ui.CellLocation(cellEdited.row, cellEdited.column), error.toString(), error.position);
-                    } else console.log(error);
-                }
+                ui.spreadsheet.setFormula(cellEdited.row, cellEdited.column, formulaText);
                 if (cellEdited === ui.selection.start && cellEdited !== ui.selection.end) {
                     ui.spreadsheet.spread(cellEdited.row, cellEdited.column, ui.selection.end.row, ui.selection.end.column);
                 }

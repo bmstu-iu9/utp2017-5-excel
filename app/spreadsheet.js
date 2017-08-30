@@ -154,7 +154,6 @@ const Spreadsheet = class extends EventManager {
      * @param {int} i Row index
      * @param {int} j Column index
      * @param {string} formula
-     * @throws {Spreadsheet.FormulaSyntaxError} on syntax error in formula
      * @function
      */
     setFormula(i, j, formula) {
@@ -164,8 +163,18 @@ const Spreadsheet = class extends EventManager {
         this.triggerEvent(Spreadsheet.Event.CELL_FORMULA_UPDATED, i, j, formula);
 
         const parser = new Spreadsheet._Parser(formula);
-        const expression = parser.parse();
+        let expression;
+        try {
+            expression = parser.parse();
+        } catch (error) {
+            if (error instanceof Spreadsheet.FormulaError) {
+                this.triggerEvent(Spreadsheet.Event.CELL_FORMULA_ERROR, i, j, error);
+                return;
+            }
+            throw error;
+        }
         this._setExpression(i, j, expression);
+
     }
 
     /**
@@ -213,8 +222,9 @@ const Spreadsheet = class extends EventManager {
                 catch (error) {
                     if (error instanceof Spreadsheet.FormulaError) {
                         this.triggerEvent(Spreadsheet.Event.CELL_FORMULA_ERROR, vertex.row, vertex.column, error);
-                    } else console.log(error);
-                    return;
+                        return;
+                    }
+                    throw error;
                 }
             } else if (cell.expression instanceof Spreadsheet._CellReference) {
                 if (!this._cellExists(cell.expression.row, cell.expression.column) || this.cells[cell.expression.row][cell.expression.column].value == null) {
