@@ -1,5 +1,15 @@
 "use strict";
 
+/*
+const DEBUG = true;
+function trace(...args) {
+    if (DEBUG) {
+        console.log(...args);
+    }
+    return args[args.length - 1];
+}
+*/
+
 /**
  * XLSXManager is a class, that generates *.xlsx binary files
  * @example
@@ -21,7 +31,7 @@ const XLSXManager = class {
         static _numberize(pos) {
             let tmp = 0;
             let pow = 1;
-            let posR = pos;
+            let posR = pos.split("").reverse().join("");
             for (let i = 0; !Number.isInteger(posR[i]) && i < pos.length; i++) {
                 let d = parseInt(posR[i], 36) - 9;
                 tmp += pow * d;
@@ -714,8 +724,8 @@ XLSXManager.Styles.Font = class {
             throw new Error("Incompatible types! XLSXManager.Styles.Font expected!");
         }
         const properties = Object.keys(this);
-        for (let i = 0; i < properties.length; i++) {
-            if (this[properties[i]] !== font[properties[i]]) {
+        for (let property of properties) {
+            if (this[property] !== font[property]) {
                 return false;
             }
         }
@@ -775,7 +785,7 @@ XLSXManager._Sheet = class {
                 }
                 if (obj.value) {
                     let val = cell.appendChild(doc.createElement("v"));
-                    val.textContent = obj.value; // value
+                    val.textContent = JSON.stringify(obj.value); // value
                 }
                 r.appendChild(cell);
             }
