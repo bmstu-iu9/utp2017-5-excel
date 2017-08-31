@@ -21,7 +21,7 @@ const XLSXManager = class {
         static _numberize(pos) {
             let tmp = 0;
             let pow = 1;
-            let posR = pos.split().reverse().join();
+            let posR = pos;
             for (let i = 0; !Number.isInteger(posR[i]) && i < pos.length; i++) {
                 let d = parseInt(posR[i], 36) - 9;
                 tmp += pow * d;
@@ -76,37 +76,34 @@ const XLSXManager = class {
         }
 
         /**
-         * Sets the blob, that loads through the fill() call
+         * Sets the blob, that loads through the fill() call, previously loaded imports would be overridden
          * @param blob - *.xlsx file blob
          */
-        import(blob) {
+        importBlob(blob) {
             this._blob = blob;
+            this._b64str = undefined;
         }
 
     /**
-     * Sets the b64str, that loads through the fillB64() call
+     * Sets the b64str, that loads through the fill() call, previously loaded imports would be overridden
      * @param b64str - base64 string of the *.xlsx file
      */
     importB64(b64str) {
         this._b64str = b64str;
+        this._blob = undefined;
     }
 
     /**
-     * Fills the cells of the spreadsheet with the imported base64 string
-     */
-    fillB64() {
-        this._fill(this._b64str, {base64: true});
-    }
-
-    /**
-     * Fills the cells of the spreadsheet with the data, given from import(blob) function
+     * Fills the cells of the spreadsheet with the data, given from importBlob(blob)/importB64(b64str) from function
      */
     fill() {
-        if (!this._blob) {
-            console.error("blob is undefined! Remember calling import(blob)");
-            return;
+        if (this._blob) {
+            this._fill(this._blob);
+        } else if (this._b64str) {
+            this._fill(this._b64str, {base64: true});
+        } else {
+            throw new Error("Neither base64 string nor blob was imported! Remember calling importBlob/importB64 function!");
         }
-        this._fill(this._blob);
     }
 
     _fill(obj, opt = undefined) {
@@ -330,15 +327,16 @@ XLSXManager.FormattedCell = class {
 
     /**
      * @example
-     * color("FF0000")
-     * color("AAFFBB")
-     * @param value hex color string, without # sign
+     * color("#FF0000")
+     * color("#AAFFBB")
+     * @param value hex color string
      */
     set color(value) {
-        if (!value.match(/([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})/)) {
+        let cl = /^#([a-f0-9]{6}|[a-f0-9]{3})$/i.exec(value);
+        if (cl === null) {
             throw new Error("Only hex values of color supported!");
         }
-        this._color = value;
+        this._color = cl[1];
     }
 
     get bold() {
@@ -383,13 +381,14 @@ XLSXManager.FormattedCell = class {
 
     /**
      * See example in {@link #color(value)} method
-     * @param value hex color string without #
+     * @param value hex color string
      */
     set fillColor(value) {
-        if (!value.match(/([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})/)) {
-            throw new Error("Only hex values of fill color supported!");
+        let cl = /^#([a-f0-9]{6}|[a-f0-9]{3})$/i.exec(value);
+        if (cl === null) {
+            throw new Error("Only hex values of color supported!");
         }
-        this._fillColor = value;
+        this._fillColor = cl[1];
     }
 
     get borderLeft() {
@@ -496,10 +495,11 @@ XLSXManager.FormattedCell.Border = class /*extends Spreadsheet._Cell*/ {
     }
 
     set color(value) {
-        if (!value.match(/([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})/)) {
+        let cl = value.match(/^#([a-f0-9]{6}|[a-f0-9]{3})$/ig);
+        if (cl === null) {
             throw new Error("Only hex values of color supported!");
         }
-        this._color = value;
+        this._color = cl[1];
     }
 };
 
@@ -572,7 +572,7 @@ XLSXManager.Styles = class {
         //style.italic = true;
         //style.fontFamily = "Courier";
         style.bold = true;
-        style.color = "FF0000";
+        style.color = "#FF0000";
         this.addStyle(style);
         // END TEST //
     }
@@ -585,8 +585,8 @@ XLSXManager.Styles = class {
      * @private
      */
     static _contains(arr, elem) {
-        for (let i = 0; i < arr.length; i++) {
-            if (arr[i].equals(elem)) {
+        for (let i of arr) {
+            if (i.equals(elem)) {
                 return true;
             }
         }
@@ -714,7 +714,6 @@ XLSXManager.Styles.Font = class {
             throw new Error("Incompatible types! XLSXManager.Styles.Font expected!");
         }
         const properties = Object.keys(this);
-        console.log(properties);
         for (let i = 0; i < properties.length; i++) {
             if (this[properties[i]] !== font[properties[i]]) {
                 return false;

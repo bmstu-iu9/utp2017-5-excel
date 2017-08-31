@@ -541,7 +541,7 @@ const ui = {
                     case "xlsx":
                         const manager = new XLSXManager();
                         manager.setSpreadsheet(spreadsheet);
-                        manager.import(file);
+                        manager.importBlob(file);
                         manager.fill();
                         break;
                 }
