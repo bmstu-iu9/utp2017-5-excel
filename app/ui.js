@@ -1,10 +1,10 @@
-if(typeof window !== "object" || window === null || typeof document !== "object" || document === null) {
+if (typeof window !== "object" || window === null || typeof document !== "object" || document === null) {
     throw new Error("A window with a document is required");
 }
 
 const ui = {
 
-    DEFAULT_ROWS: 100,
+    DEFAULT_ROWS: 50,
     DEFAULT_COLUMNS: 26,
     MAX_ROWS: 32767,
     MAX_COLUMNS: 256,
@@ -24,6 +24,41 @@ const ui = {
             }));
 
         ui.displayTable();
+
+        // Saving content on unload, restoring on load
+        addEventListener("beforeunload", () => {
+            const manager = new XLSXManager();
+            manager.setSpreadsheet(ui.spreadsheet);
+            const promise = manager.generateB64();
+            promise.then(b64 => {
+                localStorage.setItem("savedSheet", b64);
+                localStorage.setItem("savedName", document.getElementById("filename").value);
+            }).catch(error => console.log(error));
+        });
+
+        addEventListener("load", () => {
+            const sheet = localStorage.getItem("savedSheet");
+            const name = localStorage.getItem("savedName");
+            if (sheet && name) {
+                const spreadsheet = new Spreadsheet();
+                ui.clearTable();
+                ui.attach(spreadsheet);
+
+                const manager = new XLSXManager();
+                manager.setSpreadsheet(spreadsheet);
+                manager.importB64(sheet);
+                manager.fill();
+                localStorage.removeItem("savedSheet");
+                document.getElementById("filename").value = name;
+                localStorage.removeItem("savedName");
+            }
+        });
+
+        // Displaying color palettes
+        document.querySelectorAll(".color-palette").forEach(palette =>
+            Array.from(document.getElementById("color-palette-template").children).forEach(color =>
+                palette.appendChild(color.cloneNode(false))));
+        document.getElementById("color-palette-template").remove();
 
         { // Making cells resizable
             const dragGuideVertical = document.getElementById("drag-guide-vertical");
@@ -52,7 +87,6 @@ const ui = {
                             cell.style.width = cell.style.minWidth = Math.max(CELL_MIN_WIDTH, event.clientX - rect.left) + "px";
                             // Updating cell content
                             const index = Array.from(cell.parentElement.children).indexOf(cell);
-                            console.log(index);
                             document.querySelectorAll("#table tr").forEach(row =>
                                 !row.children[1].classList.contains("column-header") &&
                                 ui._updateCellText(row.children[index]));
@@ -85,21 +119,62 @@ const ui = {
                 const row = Array.from(tableRow.parentElement.children).indexOf(tableRow) - 1;
                 return new ui.CellLocation(row, column);
             };
+            const getRowOf = cell => Array.from(table.querySelectorAll("tr")).indexOf(cell.parentElement) - 1;
+            const getColumnOf = cell => Array.from(cell.parentElement.children).indexOf(cell) - 1;
+            const displayFormula = location => {
+                const formula = ui.spreadsheet.getFormula(location.row, location.column);
+                const cell = ui._getCellByLocation(location);
+                setTimeout(() => {
+                    formulaInput.textContent = formula && "=" + formula;
+                    const error = cell.getAttribute("data-error");
+                    const position = cell.getAttribute("data-errorposition");
+                    ui._setError(location, error || "", position && +position);
+                }, 1);
+            };
             document.addEventListener("mousedown", event => {
+                let setSelection = null;
                 if (isRegularCell(event.target)) {
                     const startLocation = getLocationOf(event.target);
                     ui.selection.set(startLocation, startLocation);
-                    const formula = ui.spreadsheet.getFormula(startLocation.row, startLocation.column);
-                    setTimeout(() => formulaInput.textContent = formula && "=" + formula, 1);
-                    const error = event.target.getAttribute("data-error");
-                    formulaError.textContent = error || "";
-                    const setSelection = event => {
+                    displayFormula(startLocation);
+                    setSelection = event => {
                         if (isRegularCell(event.target)) {
                             const endLocation = getLocationOf(event.target);
                             ui.selection.set(startLocation, endLocation);
                         }
                     };
+                }
+                else if (event.target.matches(".column-header")) {
+                    const startLocation = new ui.CellLocation(0, getColumnOf(event.target));
+                    ui.selection.set(startLocation, new ui.CellLocation(ui.getTableHeight() - 1, startLocation.column));
+                    displayFormula(startLocation);
+                    setSelection = event => {
+                        if (event.target.matches(".column-header")) {
+                            const endLocation = new ui.CellLocation(ui.getTableHeight() - 1, getColumnOf(event.target));
+                            ui.selection.set(startLocation, endLocation);
+                        }
+                    };
+                }
+                else if (event.target.matches(".row-header")) {
+                    if (event.target.parentElement.matches(":first-child")) {
+                        ui.selection.set(new ui.CellLocation(0, 0),
+                            new ui.CellLocation(ui.getTableHeight() - 1, ui.getTableWidth() - 1));
+                        return;
+                    }
+                    const startLocation = new ui.CellLocation(getRowOf(event.target), 0);
+                    ui.selection.set(startLocation, new ui.CellLocation(startLocation.row, ui.getTableWidth() - 1));
+                    displayFormula(startLocation);
+                    setSelection = event => {
+                        if (event.target.matches(".row-header") && !event.target.parentElement.matches(":first-child")) {
+                            const endLocation = new ui.CellLocation(getRowOf(event.target), ui.getTableWidth() - 1);
+                            ui.selection.set(startLocation, endLocation);
+                        }
+                    };
+                }
+                if (setSelection) {
+                    table.classList.remove("not-dragged");
                     const finish = () => {
+                        table.classList.add("not-dragged");
                         table.removeEventListener("mouseover", setSelection);
                         document.removeEventListener("mouseup", finish);
                     };
@@ -114,7 +189,7 @@ const ui = {
             const formulaInput = document.getElementById("formula");
             const updateCell = () => {
                 cellEdited = ui.selection.start;
-                if(!ui._getCellByLocation(cellEdited).classList.contains("error")) {
+                if (!ui._getCellByLocation(cellEdited).classList.contains("error")) {
                     ui._setCellText(cellEdited, formulaInput.textContent);
                 }
             };
@@ -122,6 +197,15 @@ const ui = {
                 if (ui.selection.exists() && event.target === document.body && event.key.length === 1) {
                     document.getElementById("nav-formula").click();
                     formulaInput.focus();
+                    ui._moveFormulaInputCaretToEnd();
+                }
+            });
+            // Opening formula input on double click
+            document.addEventListener("dblclick", event => {
+                if (event.target.matches("td:not(.column-header):not(.row-header)")) {
+                    document.getElementById("nav-formula").click();
+                    formulaInput.focus();
+                    ui._moveFormulaInputCaretToEnd();
                 }
             });
             const applyFormula = () => {
@@ -134,14 +218,8 @@ const ui = {
                         formulaText = JSON.stringify(formulaText);
                     }
                 } else formulaText = formulaText.substring(1);
-                try {
-                    ui.spreadsheet.setFormula(cellEdited.row, cellEdited.column, formulaText);
-                } catch (error) {
-                    if (error instanceof Spreadsheet.FormulaError) {
-                        ui._setError(new ui.CellLocation(cellEdited.row, cellEdited.column), error.toString());
-                    } else console.log(error);
-                }
-                if(cellEdited === ui.selection.start && cellEdited !== ui.selection.end) {
+                ui.spreadsheet.setFormula(cellEdited.row, cellEdited.column, formulaText);
+                if (cellEdited === ui.selection.start && cellEdited !== ui.selection.end) {
                     ui.spreadsheet.spread(cellEdited.row, cellEdited.column, ui.selection.end.row, ui.selection.end.column);
                 }
                 cellEdited = null;
@@ -165,23 +243,67 @@ const ui = {
                 formulaInput.textContent = formulaInput.textContent.replace(/\xa0/g, " ");
                 ui._moveFormulaInputCaretToEnd();
             }, 1));
-            // Moving selection with Tab and Shift+Tab
-            document.addEventListener("keydown", event => {
-                if (event.code === "Tab" && ui.selection.exists) {
-                    const direction = event.shiftKey ? -1 : 1;
-                    const location = new ui.CellLocation(ui.selection.start.row, ui.selection.start.column + direction);
-                    const cell = ui._getCellByLocation(location);
-                    if (location.column >= 0 && cell) {
-                        const mouse = document.createEvent("MouseEvents");
-                        mouse.initEvent("mousedown", true, true);
-                        cell.dispatchEvent(mouse);
-                        mouse.initEvent("mouseup", true, true);
-                        cell.dispatchEvent(mouse);
-                    }
-                    if (document.activeElement === formulaInput) formulaInput.blur();
-                    event.preventDefault();
+            // Removing error highlight on input
+            formulaInput.addEventListener("input", () => {
+                const errorHighlight = formulaInput.querySelector("span");
+                if (errorHighlight) {
+                    errorHighlight.parentElement.insertBefore(errorHighlight.childNodes[0], errorHighlight);
+                    errorHighlight.remove();
                 }
             });
+            // Moving selection with Tab and arrow keys
+            document.addEventListener("keydown", event => {
+                if (!ui.selection.exists()) return;
+                let start = null;
+                let end = null;
+                let direction;
+                const shiftHorizontally = location => new ui.CellLocation(location.row,
+                    Math.max(0, Math.min(location.column + direction, ui.getTableWidth() - 1)));
+                const shiftVertically = location => new ui.CellLocation(
+                    Math.max(0, Math.min(location.row + direction, ui.getTableHeight() - 1)), location.column);
+                switch (event.code) {
+                    case "Tab":
+                        direction = event.shiftKey ? -1 : 1;
+                        start = end = shiftHorizontally(ui.selection.start);
+                        break;
+                    case "ArrowLeft":
+                    case "ArrowRight":
+                    case "ArrowUp":
+                    case "ArrowDown":
+                        if (event.target === formulaInput) return;
+                        direction = event.code === "ArrowLeft" || event.code === "ArrowUp" ? -1 : 1;
+                        const shift = event.code === "ArrowLeft" || event.code === "ArrowRight" ?
+                            shiftHorizontally : shiftVertically;
+                        if (event.shiftKey) {
+                            start = ui.selection.start;
+                            end = shift(ui.selection.end);
+                        }
+                        else if (event.ctrlKey) {
+                            start = shift(ui.selection.start);
+                            end = shift(ui.selection.end);
+                        }
+                        else start = end = shift(ui.selection.start);
+                        break;
+                    case "Delete":
+                        if (event.target === formulaInput) return;
+                        document.getElementById("clear").click();
+                        return;
+                    default:
+                        return;
+                }
+                const mouse = document.createEvent("MouseEvents");
+                mouse.initEvent("mousedown", true, true);
+                ui._getCellByLocation(start).dispatchEvent(mouse);
+                const endCell = ui._getCellByLocation(end);
+                mouse.initEvent("mouseover", true, true);
+                endCell.dispatchEvent(mouse);
+                mouse.initEvent("mouseup", true, true);
+                endCell.dispatchEvent(mouse);
+                if (document.activeElement === formulaInput) formulaInput.blur();
+                event.preventDefault();
+            });
+            document.addEventListener("animationend", event =>
+                event.target.classList.contains("just-updated") && event.target.classList.remove("just-updated"));
         }
 
         { // Defining logic of custom input elements
@@ -203,7 +325,7 @@ const ui = {
                         value: element.classList.contains("active")
                     }}));
                 } else if (element.classList.contains("switch")) {
-                    if(element.classList.contains("active")) return;
+                    if (element.classList.contains("active")) return;
                     const group = element.getAttribute("data-group");
                     document.querySelectorAll(`.switch[data-group="${group}"]`)
                         .forEach(element => element.classList.remove("active"));
@@ -330,6 +452,8 @@ const ui = {
         }
 
         { // Cell actions
+            const resizeHorizontally = (deltaWidth) => ui.setTableWidth(ui.getTableWidth() + deltaWidth);
+            const resizeVertically = (deltaHeight) => ui.setTableHeight(ui.getTableHeight() + deltaHeight);
             document.getElementById("copy").addEventListener("click", event => {
                 if (event.target.classList.contains("disabled")) return;
                 ui.buffer = ui.spreadsheet.bufferize(
@@ -340,13 +464,15 @@ const ui = {
                 let buffer;
                 switch (event.detail.value) {
                     case "right":
+                        resizeHorizontally(ui.buffer.width());
                         buffer = ui.spreadsheet.bufferize(ui.selection.start.row, ui.selection.start.column,
-                            ui.selection.start.row + ui.buffer.height() - 1, ui.tableWidth() - 1);
+                            ui.selection.start.row + ui.buffer.height() - 1, ui.getTableWidth() - 1);
                         ui.spreadsheet.paste(buffer, ui.selection.start.row, ui.selection.start.column + ui.buffer.width());
                         break;
                     case "down":
+                        resizeVertically(ui.buffer.height());
                         buffer = ui.spreadsheet.bufferize(ui.selection.start.row, ui.selection.start.column,
-                            ui.tableHeight() - 1, ui.selection.start.column + ui.buffer.width() - 1);
+                            ui.getTableHeight() - 1, ui.selection.start.column + ui.buffer.width() - 1);
                         ui.spreadsheet.paste(buffer, ui.selection.start.row + ui.buffer.height(), ui.selection.start.column);
                         break;
                 }
@@ -360,13 +486,15 @@ const ui = {
                 let buffer;
                 switch (event.detail.value) {
                     case "right":
+                        resizeHorizontally(ui.selection.width());
                         buffer = ui.spreadsheet.bufferize(ui.selection.topLeftRow(), ui.selection.topLeftColumn(),
-                            ui.selection.topLeftRow() + ui.selection.height() - 1, ui.tableWidth() - 1);
+                            ui.selection.topLeftRow() + ui.selection.height() - 1, ui.getTableWidth() - 1);
                         ui.spreadsheet.paste(buffer, ui.selection.topLeftRow(), ui.selection.topLeftColumn() + ui.selection.width());
                         break;
                     case "down":
+                        resizeVertically(ui.selection.height());
                         buffer = ui.spreadsheet.bufferize(ui.selection.topLeftRow(), ui.selection.topLeftColumn(),
-                            ui.tableHeight() - 1, ui.selection.topLeftColumn() + ui.selection.width() - 1);
+                            ui.getTableHeight() - 1, ui.selection.topLeftColumn() + ui.selection.width() - 1);
                         ui.spreadsheet.paste(buffer, ui.selection.topLeftRow() + ui.selection.height(), ui.selection.topLeftColumn());
                         break;
                 }
@@ -377,15 +505,18 @@ const ui = {
                 switch (event.detail.value) {
                     case "left":
                         buffer = ui.spreadsheet.bufferize(ui.selection.topLeftRow(), ui.selection.topLeftColumn() + ui.selection.width(),
-                            ui.selection.topLeftRow() + ui.selection.height() - 1, ui.tableWidth() - 1);
+                            ui.selection.topLeftRow() + ui.selection.height() - 1, ui.getTableWidth() - 1);
                         ui.spreadsheet.paste(buffer, ui.selection.topLeftRow(), ui.selection.topLeftColumn());
+                        if (ui.selection.height() === ui.getTableHeight()) resizeHorizontally(-ui.selection.width());
                         break;
                     case "up":
                         buffer = ui.spreadsheet.bufferize(ui.selection.topLeftRow() + ui.selection.height(), ui.selection.topLeftColumn(),
-                            ui.tableHeight() - 1, ui.selection.topLeftRow() + ui.selection.width() - 1);
+                            ui.getTableHeight() - 1, ui.selection.topLeftRow() + ui.selection.width() - 1);
                         ui.spreadsheet.paste(buffer, ui.selection.topLeftRow(), ui.selection.topLeftColumn());
+                        if (ui.selection.width() === ui.getTableWidth()) resizeVertically(-ui.selection.height());
                         break;
                 }
+                ui.selection.fitToTable();
             });
         }
 
@@ -410,7 +541,8 @@ const ui = {
                     case "xlsx":
                         const manager = new XLSXManager();
                         manager.setSpreadsheet(spreadsheet);
-                        manager.fill(file);
+                        manager.importBlob(file);
+                        manager.fill();
                         break;
                 }
             });
@@ -437,6 +569,12 @@ const ui = {
                     document.body.removeChild(a);
                 }).catch(error => console.log(error));
             });
+            document.getElementById("new").addEventListener("click", () => {
+                document.getElementById("filename").value = "Untitled";
+                const spreadsheet = new Spreadsheet();
+                ui.clearTable();
+                ui.attach(spreadsheet);
+            });
         }
 
     },
@@ -452,8 +590,7 @@ const ui = {
         spreadsheet.addEventListener(Spreadsheet.Event.CELL_VALUE_UPDATED, (row, column, value) => {
             let text = "";
             let error = "";
-            const location = new ui.CellLocation(row, column);
-            switch(typeof value) {
+            switch (typeof value) {
                 case "string":
                 case "number":
                     text = value + "";
@@ -465,7 +602,13 @@ const ui = {
                     break;
                 default:
                     error = "Calculated value is not printable";
-
+            }
+            if (row >= ui.getTableHeight()) ui.setTableHeight(row + 1);
+            if (column >= ui.getTableWidth()) ui.setTableWidth(column + 1);
+            const location = new ui.CellLocation(row, column);
+            const cell = ui._getCellByLocation(location);
+            if(!cell.classList.contains("selected-first") && text.length && cell.textContent !== text) {
+                cell.classList.add("just-updated");
             }
             ui._setCellText(location, text);
             ui._setError(location, error);
@@ -478,8 +621,9 @@ const ui = {
             }
         });
 
-        spreadsheet.addEventListener(Spreadsheet.Event.CELL_FORMULA_ERROR, (row, column, error) =>
-            ui._setError(new ui.CellLocation(row, column), error.toString()));
+        spreadsheet.addEventListener(Spreadsheet.Event.CELL_FORMULA_ERROR, (row, column, error) => {
+            ui._setError(new ui.CellLocation(row, column), error.toString(), error.position);
+        });
 
         spreadsheet.addEventListener(Spreadsheet.Event.CELL_CIRCULAR_DEPENDENCY_DETECTED, (row, column) =>
             ui._setError(new ui.CellLocation(row, column), "Circular dependency detected"));
@@ -524,14 +668,15 @@ const ui = {
 
     /**
      * Creates a row
-     * @param index
+     * @param {int} index
+     * @param {int} width
      * @returns {Element}
      * @private
      */
-    _createRow(index) {
+    _createRow(index, width = ui.getTableWidth()) {
 
         const row = document.createElement("tr");
-        for (let j = 0; j <= ui.DEFAULT_COLUMNS; j++) {
+        for (let j = 0; j <= width; j++) {
             const cell = document.createElement("td");
             if (!j) {
                 cell.textContent = index;
@@ -563,7 +708,7 @@ const ui = {
             }
             headingRow.appendChild(cell);
         }
-        for (let i = 1; i <= ui.DEFAULT_ROWS; i++) table.appendChild(ui._createRow(i));
+        for (let i = 1; i <= ui.DEFAULT_ROWS; i++) table.appendChild(ui._createRow(i, ui.DEFAULT_COLUMNS));
     },
 
     /**
@@ -571,7 +716,7 @@ const ui = {
      */
     clearTable() {
         document.querySelectorAll("#table tr").forEach(row => row.parentElement.removeChild(row));
-        if(ui.selection.exists()) {
+        if (ui.selection.exists()) {
             ui.selection.clear();
             document.querySelectorAll(".requires-selection").forEach(element => element.classList.add("disabled"));
         }
@@ -580,18 +725,52 @@ const ui = {
 
     /**
      * Gets table width
-     * @returns {number}
+     * @returns {int}
      */
-    tableWidth() {
-        return document.querySelectorAll("#table tr").length;
+    getTableWidth() {
+        return document.getElementById("table").children[0].children.length - 1;
     },
 
     /**
      * Gets table height
-     * @returns {Number}
+     * @returns {int}
      */
-    tableHeight() {
-        return document.querySelector("#table tr").children.length;
+    getTableHeight() {
+        return document.getElementById("table").children.length - 1;
+    },
+
+    /**
+     * Sets table width
+     * @param {int} width
+     */
+    setTableWidth(width) {
+        const currentWidth = this.getTableWidth();
+        if (width < currentWidth) document.querySelectorAll("#table tr").forEach(row => {
+            const cells = row.children;
+            for (let j = currentWidth; j >= width + 1; j--) cells[j].remove();
+        });
+        else if (width > currentWidth) document.querySelectorAll("#table tr").forEach((row, i) => {
+            for (let j = currentWidth + 1; j <= width; j++) {
+                if (!i) row.appendChild(ui._createColumnHeader(j));
+                else row.appendChild(document.createElement("td"));
+            }
+        })
+    },
+
+    /**
+     * Sets table height
+     * @param {int} height
+     */
+    setTableHeight(height) {
+        const currentHeight = this.getTableHeight();
+        if (height < currentHeight) {
+            const rows = document.getElementById("table").children;
+            for (let i = currentHeight; i >= height + 1; i--) rows[i].remove();
+        }
+        else if (height > currentHeight) {
+            const table = document.getElementById("table");
+            for (let i = currentHeight + 1; i <= height; i++) table.appendChild(ui._createRow(i));
+        }
     },
 
     /**
@@ -657,11 +836,25 @@ const ui = {
      * Sets that cell contains an error and stores its description
      * @param {ui.CellLocation} location
      * @param {string} text
+     * @param {int|undefined} position
      * @private
      */
-    _setError(location, text) {
-        if(ui.selection.exists() && location.row === ui.selection.start.row && location.column === ui.selection.start.column) {
+    _setError(location, text, position = undefined) {
+        if (ui.selection.exists() && location.row === ui.selection.start.row && location.column === ui.selection.start.column) {
             document.getElementById("formula-error").textContent = text;
+            if(text && position != null) {
+                const formulaInput = document.getElementById("formula");
+                const formulaText = formulaInput.textContent;
+                if (position + 1 < formulaText.length) {
+                    formulaInput.textContent = "";
+                    formulaInput.appendChild(document.createTextNode(formulaText.substring(0, position)));
+                    const errorHighlight = document.createElement("span");
+                    errorHighlight.textContent = formulaText.substr(position, 1);
+                    formulaInput.appendChild(errorHighlight);
+                    formulaInput.appendChild(document.createTextNode(formulaText.substr(position + 1)));
+                    ui._moveFormulaInputCaretToEnd();
+                }
+            }
         }
         const cell = ui._getCellByLocation(location);
         if (text) {
@@ -671,6 +864,8 @@ const ui = {
         }
         else cell.classList.remove("error");
         cell.setAttribute("data-error", text);
+        if (position != null) cell.setAttribute("data-errorposition", position.toString());
+        else cell.removeAttribute("data-errorposition");
     },
 
     /**
@@ -679,7 +874,7 @@ const ui = {
      */
     _moveFormulaInputCaretToEnd() {
         const formulaInput = document.getElementById("formula");
-        if(formulaInput !== document.activeElement) return;
+        if (formulaInput !== document.activeElement) return;
         const range = document.createRange();
         range.selectNodeContents(formulaInput);
         range.collapse(false);
@@ -719,7 +914,7 @@ const ui = {
             fontSizeSelect.previousElementSibling.classList.add("ambiguous");
         } else {
             fontSizeSelect.previousElementSibling.classList.remove("ambiguous");
-            fontSizeSelect.previousElementSibling.textContent = fontSize;
+            fontSizeSelect.previousElementSibling.textContent = fontSize.replace("pt", " pt");
         }
 
         document.getElementById("bold").classList[
@@ -735,6 +930,12 @@ const ui = {
             document.getElementById("align-" + value).classList[
                 ui.selection.everyCell(cell => cell.style.textAlign === value) ? "add" : "remove"
             ]("active"));
+
+        document.getElementById("delete").previousElementSibling.classList[
+            !ui.selection.exists() ||
+                ui.selection.width() === ui.getTableWidth() && ui.selection.height() === ui.getTableHeight() ?
+                "add" : "remove"
+            ]("disabled");
 
     },
 
@@ -801,17 +1002,17 @@ const ui = {
          */
         set(start, end) {
 
-            if(this.start !== null) this.clear();
+            if (this.start !== null) this.clear();
             this.start = start;
             this.end = end;
 
             this.forEachCell((cell, i, j, row, column) => {
                 cell.classList.add("selected");
-                if(row === this.start.row && column === this.start.column) cell.classList.add("selected-first");
-                if(i === 0) ui._getCellByCoordinates(row - 1, column).classList.add("selection-border-bottom");
-                if(i === this.height() - 1) cell.classList.add("selection-border-bottom");
-                if(j === 0) ui._getCellByCoordinates(row, column - 1).classList.add("selection-border-right");
-                if(j === this.width() - 1) cell.classList.add("selection-border-right");
+                if (row === this.start.row && column === this.start.column) cell.classList.add("selected-first");
+                if (i === 0) ui._getCellByCoordinates(row - 1, column).classList.add("selection-border-bottom");
+                if (i === this.height() - 1) cell.classList.add("selection-border-bottom");
+                if (j === 0) ui._getCellByCoordinates(row, column - 1).classList.add("selection-border-right");
+                if (j === this.width() - 1) cell.classList.add("selection-border-right");
             });
 
             ui._setTableSelectionChanged();
@@ -842,12 +1043,12 @@ const ui = {
          */
         forEachCell(callback) {
 
-            if(!this.exists()) return;
+            if (!this.exists()) return;
 
             const startRow = this.topLeftRow();
             const startColumn = this.topLeftColumn();
             const rows = document.querySelectorAll("#table tr");
-            for(let i = startRow; i <= startRow + this.height() - 1; i++) {
+            for (let i = startRow; i <= startRow + this.height() - 1; i++) {
                 const cells = rows[i + 1].children;
                 for (let j = startColumn; j <= startColumn + this.width() - 1; j++) {
                     callback(cells[j + 1], i - startRow, j - startColumn, i, j);
@@ -868,6 +1069,24 @@ const ui = {
             this.forEachCell((...args) => flag = flag && !!callback(...args));
             return flag;
 
+        },
+
+        /**
+         * If selection boundaries are outside of the table, fixes them
+         */
+        fitToTable() {
+            const tableWidth = ui.getTableWidth();
+            const tableHeight = ui.getTableHeight();
+            ui.selection.set(
+                new ui.CellLocation(
+                    Math.min(ui.selection.start.row, tableHeight - 1),
+                    Math.min(ui.selection.start.column, tableWidth - 1)
+                ),
+                new ui.CellLocation(
+                    Math.min(ui.selection.end.row, tableHeight - 1),
+                    Math.min(ui.selection.end.column, tableWidth - 1)
+                )
+            );
         }
 
     },

@@ -349,6 +349,10 @@ $blocks-spacing: 15px;
     overflow: hidden;
     white-space: nowrap;
     transition: border-bottom-color 0.135s ease;
+    span {
+        background: rgba(211, 61, 44, 0.2);
+        border-radius: 2px;
+    }
 }
 #formula[contenteditable="true"] {
     border-bottom-color: #CCC;
@@ -409,6 +413,7 @@ $blocks-spacing: 15px;
         color: #1F1F1F;
         font-weight: 400;
         white-space: nowrap;
+        cursor: cell;
     }
     td.column-header, td.row-header {
         position: relative;
@@ -417,6 +422,7 @@ $blocks-spacing: 15px;
         font-weight: 600;
         color: #424242;
         text-align: center;
+        cursor: pointer;
     }
     td.row-header {
         width: 70px;
@@ -431,19 +437,38 @@ $blocks-spacing: 15px;
         top: 0; bottom: 0;
         right: -3px;
         width: 6px;
-        cursor: ew-resize;
     }
     .dragger-horizontal {
         position: absolute;
         right: 0; left: 0;
         bottom: -3px;
         height: 6px;
-        cursor: ns-resize;
     }
-
+    td.just-updated {
+        animation: flash 0.66s ease;
+    }
+    td.just-updated.selected:not(.selected-first) {
+        animation: flash-selected 0.66s ease;
+    }
+    @keyframes flash {
+        0% {
+            box-shadow: inset 0 0 0 999px rgba(255, 231, 92, 0.5);
+        }
+        100% {
+            box-shadow: none;
+        }
+    }
+    @keyframes flash-selected {
+        0% {
+            box-shadow: inset 0 0 0 999px rgba(255, 231, 92, 0.5), inset 0 0 0 999px rgba(66, 133, 244, 0.11);
+        }
+        100% {
+            box-shadow: inset 0 0 0 999px rgba(66, 133, 244, 0.11);
+        }
+    }
     $selection-border-style: 2px solid #4285F4;
     td.selected {
-        box-shadow: inset 0 0 0 999px rgba(66, 133, 244, 0.11)
+        box-shadow: inset 0 0 0 999px rgba(66, 133, 244, 0.11);
     }
     td.selected-first {
         box-shadow: none;
@@ -466,6 +491,12 @@ $blocks-spacing: 15px;
         content: "ERROR";
     }
 
+}
+.not-dragged .dragger-vertical:hover {
+    cursor: col-resize;
+}
+.not-dragged .dragger-horizontal:hover {
+    cursor: row-resize;
 }
 #hidden {
     position: fixed;
