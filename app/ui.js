@@ -43,15 +43,11 @@ const ui = {
                 const spreadsheet = new Spreadsheet();
                 ui.clearTable();
                 ui.attach(spreadsheet);
-                const string = atob(sheet);
-                const array = new Uint8Array(new ArrayBuffer(string.length));
-                for (let i = 0; i < string.length; i++) {
-                    array[i] = string.charCodeAt(i);
-                }
-                const blob = new Blob([array], {type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+
                 const manager = new XLSXManager();
                 manager.setSpreadsheet(spreadsheet);
-                manager.fill(blob);
+                manager.importB64(sheet);
+                manager.fill();
                 localStorage.removeItem("savedSheet");
                 document.getElementById("filename").value = name;
                 localStorage.removeItem("savedName");
@@ -545,7 +541,8 @@ const ui = {
                     case "xlsx":
                         const manager = new XLSXManager();
                         manager.setSpreadsheet(spreadsheet);
-                        manager.fill(file);
+                        manager.import(file);
+                        manager.fill();
                         break;
                 }
             });
