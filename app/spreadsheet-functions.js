@@ -331,7 +331,7 @@ Spreadsheet._Function = Object.freeze({
     ACOT(x) {
         if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof x !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
-        return Math.atan(1/x);
+        return Math.atan(1 / x);
     },
 
     /**
@@ -360,8 +360,8 @@ Spreadsheet._Function = Object.freeze({
     COT(x) {
         if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof x !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
-        if (Number.isInteger(x/PI)) throw new Spreadsheet.FormulaError("Incorrect value", this.position);
-        return Math.cos(x)/Math.sin(x);
+        if (Number.isInteger(x / Math.PI)) throw new Spreadsheet.FormulaError("Incorrect value", this.position);
+        return Math.cos(x) / Math.sin(x);
     },
 
     /**
@@ -389,7 +389,7 @@ Spreadsheet._Function = Object.freeze({
     DEGREES(x) {
         if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof x !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
-        return x*180/Math.PI;
+        return x * 180 / Math.PI;
     },
 
     /**
@@ -408,9 +408,9 @@ Spreadsheet._Function = Object.freeze({
 
     /**
      * Returns the factorial of a number
-     * @param {number} y
+     * @param {number} x
      * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 1
-     * @throws {Spreadsheet.ArgumentTypeError} y must be of type number
+     * @throws {Spreadsheet.ArgumentTypeError} x must be of type number
      * @throws {Spreadsheet.FormulaError} x must be >= 0
      * @returns {int}
      * @function
@@ -419,7 +419,7 @@ Spreadsheet._Function = Object.freeze({
         if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof x !== "number" || !Number.isInteger(x)) throw new Spreadsheet.ArgumentTypeError(this.position);
         if (x < 0) throw new Spreadsheet.FormulaError("Incorrect value", this.position);
-        if (x === 0 || x === 1) return 1;
+        if (x === 0) return 1;
         let factorial = 1;
         while (x > 1) {
             factorial *= x;
@@ -454,11 +454,7 @@ Spreadsheet._Function = Object.freeze({
     GCD(x, y) {
         if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof x !== "number" || typeof y !== "number" || !Number.isInteger(x) || !Number.isInteger(y)) throw new Spreadsheet.ArgumentTypeError(this.position);
-        while (y) {
-            let z = x%y;
-            x = y;
-            y = z;
-        }
+        while (y) [x, y] = [y, x % y];
         return x;
     },
 
@@ -473,7 +469,7 @@ Spreadsheet._Function = Object.freeze({
     ISEVEN(x) {
         if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof x !== "number" || !Number.isInteger(x)) throw new Spreadsheet.ArgumentTypeError(this.position);
-        return x%2 === 0;
+        return x % 2 === 0;
     },
 
     /**
@@ -486,8 +482,8 @@ Spreadsheet._Function = Object.freeze({
      */
     ISODD(x) {
         if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        if (typeof x !== "number"  || !Number.isInteger(x)) throw new Spreadsheet.ArgumentTypeError(this.position);
-        return x%2 === 1;
+        if (typeof x !== "number" || !Number.isInteger(x)) throw new Spreadsheet.ArgumentTypeError(this.position);
+        return x % 2 === 1;
     },
 
     /**
@@ -500,9 +496,7 @@ Spreadsheet._Function = Object.freeze({
      * @function
      */
     LCM(x, y) {
-        if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        if (typeof x !== "number" || typeof y !== "number" || !Number.isInteger(x) || !Number.isInteger(y)) throw new Spreadsheet.ArgumentTypeError(this.position);
-        return x*y/GCD(x, y);
+        return x * y / Spreadsheet._Function.GCD.call(this, x, y);
     },
 
     /**
@@ -550,9 +544,8 @@ Spreadsheet._Function = Object.freeze({
     LOG(x, base) {
         if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof x !== "number" || typeof base !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
-        if (x <= 0) throw new Spreadsheet.FormulaError("Incorrect value", this.position);
-        if (base <= 0 || base === 1) throw new Spreadsheet.FormulaError("Incorrect value", this.position);
-        return Math.log(x)/Math.log(base);
+        if (x <= 0 || base <= 0 || base === 1) throw new Spreadsheet.FormulaError("Incorrect value", this.position);
+        return Math.log(x) / Math.log(base);
     },
 
     /**
@@ -585,15 +578,16 @@ Spreadsheet._Function = Object.freeze({
      * @param {number} exponent
      * @throws {Spreadsheet.QuantityOfArgumentsError} Number of arguments must be 2
      * @throws {Spreadsheet.ArgumentTypeError} base and exponent must be of type number
-     * @throws {Spreadsheet.FormulaError} if base < 0, exponent must be odd
+     * @throws {Spreadsheet.FormulaError} if base < 0, exponent must be an integer
      * @returns {number}
      * @function
      */
     POW(base, exponent) {
         if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        if (typeof base !== "number" || typeof exponent !== "number" || !Number.isInteger(exponent)) throw new Spreadsheet.ArgumentTypeError(this.position);
-        if (base < 0 && Number.isInteger(exponent) && exponent%2 === 0) throw new Spreadsheet.FormulaError("Incorrect value", this.position);
-        return Math.pow(base, exponent);
+        if (typeof base !== "number" || typeof exponent !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
+        const result = Math.pow(base, exponent);
+        if(isNaN(result)) throw new Spreadsheet.FormulaError("Incorrect value", this.position);
+        return result;
     },
 
     /**
@@ -608,7 +602,7 @@ Spreadsheet._Function = Object.freeze({
     QUOTIENT(dividend, divisor) {
         if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof dividend !== "number" || typeof divisor !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
-        return Math.floor(dividend/divisor);
+        return Math.floor(dividend / divisor);
     },
 
     /**
@@ -622,7 +616,7 @@ Spreadsheet._Function = Object.freeze({
     RADIANS(x) {
         if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof x !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
-        return x*Math.PI/180;
+        return x * Math.PI / 180;
     },
 
     /**
@@ -646,7 +640,8 @@ Spreadsheet._Function = Object.freeze({
     RANDBETWEEN(low, high) {
         if (arguments.length !== 2) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof low !== "number" || typeof high !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
-        return Spreadsheet._Function.ROUND(Math.random()*(high - low) + low);
+        if (high < low) throw new Spreadsheet.FormulaError("Higher boundary must be greater or equal than lower", this.position);
+        return Math.floor(Math.random() * (Math.floor(high) - Math.ceil(low) + 1) + Math.ceil(low));
     },
 
     /**
@@ -722,7 +717,7 @@ Spreadsheet._Function = Object.freeze({
     TAN(x) {
         if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof x !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
-        if (Number.isInteger(x/(PI/2))) throw new Spreadsheet.FormulaError("Incorrect value", this.position);
+        if (Number.isInteger(x / (Math.PI / 2))) throw new Spreadsheet.FormulaError("Incorrect value", this.position);
         return Math.tan(x);
     },
 
@@ -737,7 +732,7 @@ Spreadsheet._Function = Object.freeze({
     CHAR(index) {
         if (arguments.length !== 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof index !== "number") throw new Spreadsheet.ArgumentTypeError(this.position);
-        return String.fromCharCode(index)
+        return String.fromCharCode(index);
     },
 
     /**
@@ -770,7 +765,7 @@ Spreadsheet._Function = Object.freeze({
         start = start - 1;
         if (typeof str !== "string" || typeof text !== "string" || !Number.isInteger(start) || start < 0)
             throw new Spreadsheet.ArgumentTypeError(this.position);
-        const index = text.indexOf(str, start)
+        const index = text.indexOf(str, start);
         return index === -1 ? -1 : index + 1;
     },
 
@@ -953,11 +948,9 @@ Spreadsheet._Function = Object.freeze({
      * @function
      */
     IF(condition, ifTrue, ifFalse) {
-        console.log(ifTrue);
         if (arguments.length !== 3) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         if (typeof condition !== "boolean") throw new Spreadsheet.ArgumentTypeError(this.position);
-        if (condition) return ifTrue;
-        return ifFalse;
+        return condition ? ifTrue : ifFalse;
     },
 
     /**
@@ -1046,7 +1039,7 @@ Spreadsheet._Function = Object.freeze({
      */
     AVERAGE(...args) {
         if (args.length < 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
-        return Spreadsheet._Function.SUM(...args)/Spreadsheet._Function.COUNT(...args);
+        return Spreadsheet._Function.SUM.apply(this, args) / Spreadsheet._Function.COUNT.apply(this, args);
     },
 
     /**
@@ -1145,12 +1138,8 @@ Spreadsheet._Function = Object.freeze({
             })) throw new Spreadsheet.ArgumentTypeError(this.position);
         for (let element of args) {
             if (element instanceof Spreadsheet.Table) {
-                element.forEachValue(cell => {
-                    if (cell < first) first = cell
-                });
-            } else {
-                if (element < first) first = element
-            }
+                element.forEachValue(cell => cell < first && (first = cell));
+            } else if (element < first) first = element;
         }
         return first;
     },
@@ -1195,7 +1184,7 @@ Spreadsheet._Function = Object.freeze({
     MODE(...args) {
         if (args.length < 1) throw new Spreadsheet.QuantityOfArgumentsError(this.position);
         const map = new Map();
-        const updateValue = value => map.set(value, (map.get(value) ||0 ) + 1);
+        const updateValue = value => map.set(value, (map.get(value) || 0) + 1);
         args.forEach(function (element) {
             if (element instanceof Spreadsheet.Table) {
                 element.forEachValue(cell => {
@@ -1212,11 +1201,8 @@ Spreadsheet._Function = Object.freeze({
             }
         });
         let key = 0, value = 0;
-        for (let [k,v] of map) {
-            if (v > value) {
-                key = k;
-                value = v;
-            }
+        for (let pair of map) {
+            if (pair[1] > value) [key, value] = pair;
         }
         return key;
     },
